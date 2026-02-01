@@ -14,6 +14,7 @@ namespace JumpAndRun.Components
         
         public Vector2 Velocity;
         private bool _isGrounded;
+        private float _jumpBufferTimer;
         
         public Camera Camera { get; set; }
         public List<GameObject> Platforms { get; set; } // Simplified collision check
@@ -28,11 +29,21 @@ namespace JumpAndRun.Components
             if (InputManager.Instance.IsKeyDown(Keys.A)) Velocity.X = -MoveSpeed;
             if (InputManager.Instance.IsKeyDown(Keys.D)) Velocity.X = MoveSpeed;
 
-            // Jump
-            if (InputManager.Instance.IsJumpJustPressed() && _isGrounded)
+            // Jump Buffering
+            if (InputManager.Instance.IsJumpJustPressed())
             {
-                Velocity.Y = JumpStrength;
-                _isGrounded = false;
+                _jumpBufferTimer = 0.1f; // Buffer for 0.1 seconds
+            }
+
+            if (_jumpBufferTimer > 0)
+            {
+                _jumpBufferTimer -= dt;
+                if (_isGrounded)
+                {
+                    Velocity.Y = JumpStrength;
+                    _isGrounded = false;
+                    _jumpBufferTimer = 0; // Consume jump
+                }
             }
 
             // Gravity
