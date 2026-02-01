@@ -8,5 +8,6 @@ namespace JumpAndRun.Core
         public abstract void LoadContent();
         public abstract void Update(GameTime gameTime);
         public abstract void Draw(SpriteBatch spriteBatch);
+        public virtual void UnloadContent() { }
     }
 }

@@ -88,6 +88,22 @@ namespace JumpAndRun.Scenes
             }
         }
 
+        public override void UnloadContent()
+        {
+            _pixel?.Dispose();
+            _houseTexture?.Dispose();
+            
+            // Dispose player texture
+            var playerRenderer = _player?.GetComponent<SpriteRenderer>();
+            playerRenderer?.Texture?.Dispose();
+            
+            // Dispose object textures if any (house is in _objects but we disposed _houseTexture already which is shared? No, specific instance)
+            // Actually _houseTexture is the source. The SpriteRenderer holds a reference.
+            // If we share textures, we should be careful. 
+            // In LoadContent: _houseTexture is assigned to house. So disposing _houseTexture is enough for that one.
+            // But verify if we have other textures.
+        }
+
         public override void Draw(SpriteBatch spriteBatch)
         {
             _graphicsDevice.Clear(Color.CornflowerBlue);

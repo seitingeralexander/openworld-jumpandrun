@@ -14,6 +14,7 @@ namespace JumpAndRun.Core
 
         public void LoadScene(Scene scene)
         {
+            _currentScene?.UnloadContent();
             _currentScene = scene;
             _currentScene.LoadContent();
         }

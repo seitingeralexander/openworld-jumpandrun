@@ -66,6 +66,21 @@ namespace JumpAndRun.Scenes
             foreach(var p in _platforms) p.Update(gameTime);
         }
 
+        public override void UnloadContent()
+        {
+             // Dispose player texture
+            var playerRenderer = _player?.GetComponent<SpriteRenderer>();
+            playerRenderer?.Texture?.Dispose();
+
+            // Dispose platform textures
+            foreach (var platform in _platforms)
+            {
+                var renderer = platform.GetComponent<SpriteRenderer>();
+                renderer?.Texture?.Dispose();
+            }
+            _platforms.Clear();
+        }
+
         public override void Draw(SpriteBatch spriteBatch)
         {
             _graphicsDevice.Clear(Color.Black);
