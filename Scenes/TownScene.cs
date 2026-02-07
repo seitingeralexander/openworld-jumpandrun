@@ -129,8 +129,8 @@ namespace JumpAndRun.Scenes
 
             spriteBatch.Begin(transformMatrix: _camera.Transform);
 
-            // Draw Locations
-            foreach (var loc in Context.Town.Locations)
+            // Draw Locations - only those in this scene
+            foreach (var loc in Context.Town.Locations.Where(l => l.SceneId == SceneId))
             {
                 Color color = Color.Gray;
                 switch (loc.Type)

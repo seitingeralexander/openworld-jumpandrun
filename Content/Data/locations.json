@@ -9,6 +9,8 @@
       },
       "type": "Home",
       "capacity": 10,
+      "sceneId": "TownScene",
+      "targetSceneId": "BakerHouseInterior",
       "needRates": {
         "Energy": 10.0
       }
@@ -71,6 +73,19 @@
       "type": "Portal",
       "targetSceneId": "SideScrollScene",
       "needRates": {}
+    },
+    {
+      "id": "baker_home_interior",
+      "name": "Baker's Bedroom",
+      "position": {
+        "x": 200,
+        "y": 350
+      },
+      "type": "Home",
+      "sceneId": "BakerHouseInterior",
+      "needRates": {
+        "Energy": 15.0
+      }
     }
   ]
 }

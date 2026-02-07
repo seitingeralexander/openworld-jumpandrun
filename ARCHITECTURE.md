@@ -83,25 +83,28 @@ JumpAndRun/
 │   ├── SimContext.cs # SINGLETON - Container for global simulation state
 │   ├── TimeSystem.cs # Handles Day/Hour/Minute progression and events
 │   ├── WorldDataLoader.cs # Initializes world data (Locations, NPCs) at game start
-│   ├── Scene.cs    # Abstract base class for game states (receives SimContext)
-│   └── SceneManager.cs # Handles switching between Scenes
+│   ├── WorldData.cs  # DTOs for JSON deserialization
+│   ├── Scene.cs    # Abstract base class for game states (has SceneId property)
+│   ├── SceneManager.cs # Handles switching between Scenes, tracks ActiveSceneId
+│   └── SceneFactory.cs # Creates scenes by ID for portal transitions
 ├── World/          # Semantic world data
 │   ├── Town.cs     # Collection of Locations
-│   └── Location.cs # Definition of places (Home, Bakery, etc.)
+│   └── Location.cs # Definition of places (has SceneId, TargetSceneId for portals)
 ├── Simulation/     # Agent logic and data
 │   ├── Player.cs   # Player data (Stats, Inventory, Equipment) - PERSISTENT
 │   ├── PlayerStats.cs # RPG-like statistics (Level, Health, Strength, etc.)
 │   ├── Inventory.cs # Item storage and management
 │   ├── Equipment.cs # Equipped items and stat bonuses
-│   ├── NPC.cs      # Core entity data (Name, Pos, State)
-│   ├── NPCSystem.cs # Logic loop for updating NPCs
+│   ├── NPC.cs      # Core entity data (Name, Pos, State, CurrentSceneId)
+│   ├── NPCSystem.cs # Logic loop for updating NPCs (cross-scene movement)
 │   ├── Needs.cs    # Hunger, Energy, etc.
 │   ├── Schedule.cs # Daily routine definitions
 │   └── Background.cs # Static character traits
 ├── Scenes/         # Concrete game states (View Layer - READ ONLY from simulation)
-│   ├── TownScene.cs # Visualizes the Simulation
+│   ├── TownScene.cs # Main town view (filters NPCs by SceneId)
 │   ├── TopDownScene.cs # Legacy/Alternative gameplay mode
-│   └── SideScrollScene.cs # Legacy/Alternative gameplay mode
+│   ├── SideScrollScene.cs # Side-scrolling gameplay mode
+│   └── BakerHouseInteriorScene.cs # Example building interior
 ├── Entities/       # Shared game objects (ECS-lite)
 └── Components/     # Reusable logic blocks (Collider, SpriteRenderer, Controllers)
     ├── TopDownController.cs # Syncs position with Player data
@@ -177,6 +180,29 @@ class Town {
     1. Save current position to `ScenePositions`
     2. Update `CurrentSceneId` to target scene
     3. Load position from `ScenePositions` or use `Location.EntryPosition`
+
+### 9. Building/Portal Model
+*   **Enterable Buildings**: Any `Location` with `TargetSceneId` set becomes a portal to another scene.
+*   **Non-Enterable Locations**: Locations without `TargetSceneId` remain in the current scene.
+*   **Scene Factory**: `SceneFactory.Create(sceneId)` instantiates scenes by ID for portal transitions.
+*   **JSON Configuration**:
+```json
+// Enterable building (house)
+{
+  "id": "home_01",
+  "name": "Baker's Home",
+  "sceneId": "TownScene",
+  "targetSceneId": "BakerHouseInterior"
+}
+
+// Non-enterable location (market)
+{
+  "id": "market_01",
+  "name": "Market",
+  "sceneId": "TownScene"
+  // No targetSceneId = not a portal
+}
+```
 
 ```mermaid
 graph LR
