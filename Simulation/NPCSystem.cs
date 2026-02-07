@@ -187,18 +187,23 @@ namespace JumpAndRun.Simulation
             Vector2 dir = location.Position - npc.Position;
             float distance = dir.Length();
             
-            if (distance > speed * dt)
+            // If already close enough, just snap and stay put.
+            // This prevents flickering between Moving and Idle/Action states.
+            // Using a threshold (e.g. 1.0f) ensures we catch floating point jitters or very small dt.
+            if (distance <= speed * dt || distance < 3.0f)
+            {
+                 // Snap to target
+                npc.Position = location.Position;
+                npc.CurrentLocationId = location.Id; // Arrived
+                // Do NOT set state here, let the caller decide the state (e.g. Sleeping, Working)
+                // If caller wants to move, they called MoveTo. If we are here, we are done moving.
+            }
+            else
             {
                 dir.Normalize();
                 npc.Position += dir * speed * dt;
                 npc.State = NPCState.Moving;
                 npc.CurrentLocationId = null; // In transit
-            }
-            else
-            {
-                // Snap to target if close enough
-                npc.Position = location.Position;
-                npc.CurrentLocationId = location.Id; // Arrived
             }
         }
 
