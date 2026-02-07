@@ -16,7 +16,7 @@ namespace JumpAndRun.Scenes
         private GraphicsDevice _graphicsDevice;
         private SimContext _context;
         private NPCSystem _npcSystem;
-        private SpriteFont _font;
+        // private SpriteFont _font; // Replaced by DebugFont
         private Texture2D _pixel;
         private GameObject _player;
         private Camera _camera;
@@ -35,16 +35,8 @@ namespace JumpAndRun.Scenes
             _pixel = new Texture2D(_graphicsDevice, 1, 1);
             _pixel.SetData(new[] { Color.White });
 
-            try
-            {
-                _font = _content.Load<SpriteFont>("File");
-                // Font loading disabled due to environment limitations (missing freetype)
-            }
-            catch
-            {
-                // Fallback or handle error if font not built yet
-                System.Console.WriteLine("Font 'File' could not be loaded.");
-            }
+            // Initialize DebugFont
+            DebugFont.Initialize(_graphicsDevice);
 
 
             // Create Player Entity
@@ -130,10 +122,10 @@ namespace JumpAndRun.Scenes
                 }
                 spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X - 20, (int)loc.Position.Y - 20, 40, 40), color);
                 
-                if (_font != null)
+                if (true) // DebugFont is always available
                 {
-                    Vector2 textSize = _font.MeasureString(loc.Name);
-                    spriteBatch.DrawString(_font, loc.Name, loc.Position - new Vector2(textSize.X / 2, 40), Color.White);
+                    Vector2 textSize = DebugFont.MeasureString(loc.Name);
+                    DebugFont.DrawString(spriteBatch, loc.Name, loc.Position - new Vector2(textSize.X / 2, 40), Color.White);
                 }
             }
 
@@ -146,11 +138,11 @@ namespace JumpAndRun.Scenes
                 DrawBar(spriteBatch, new Vector2(npc.Position.X - 10, npc.Position.Y - 15), npc.Needs.GetValue(NeedType.Hunger) / 100f, Color.Red);
                 DrawBar(spriteBatch, new Vector2(npc.Position.X - 10, npc.Position.Y - 20), npc.Needs.GetValue(NeedType.Energy) / 100f, Color.Yellow);
 
-                if (_font != null)
+                if (true)
                 {
                     string info = $"{npc.Name}\n{npc.State}";
-                    Vector2 infoSize = _font.MeasureString(info);
-                    spriteBatch.DrawString(_font, info, npc.Position - new Vector2(infoSize.X / 2, 50), Color.White);
+                    Vector2 infoSize = DebugFont.MeasureString(info);
+                    DebugFont.DrawString(spriteBatch, info, npc.Position - new Vector2(infoSize.X / 2, 50), Color.White);
                 }
             }
 
