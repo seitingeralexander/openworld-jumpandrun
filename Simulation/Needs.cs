@@ -39,5 +39,10 @@ namespace JumpAndRun.Simulation
         {
             return GetValue(need) < 20f;
         }
+
+        public bool IsSatisfied(NeedType need)
+        {
+            return GetValue(need) >= 95f; // Hysteresis threshold
+        }
     }
 }

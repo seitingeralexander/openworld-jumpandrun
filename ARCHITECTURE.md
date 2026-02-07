@@ -51,9 +51,10 @@ JumpAndRun/
 *   **Location**: `Simulation/NPCSystem.cs`
 *   **Logic**:
     1.  **Decay**: Needs (Hunger, Energy) decrease over time.
-    2.  **Schedule**: NPCs check their `Schedule` for the current hour's task.
-    3.  **Override**: If Needs are critical, the Schedule is overridden (e.g., go eat, go sleep).
-*   **Update Frequency**: Can run synchronized with `GameTime` or largely independent ticks.
+    2.  **Recovery**: If at a providing Location, Needs increase based on `Location.NeedSatisfactionRates`.
+    3.  **Critical Needs**: If Needs drop below 20%, NPC seeks the best Location (e.g., Home for Sleep).
+    4.  **Hysteresis**: NPC stays at the recovery location until the need is fully satisfied (>95%).
+    5.  **Schedule**: Otherwise, follows the daily routine.
 
 ### 3. Scene Management
 *   **Location**: `Core/SceneManager.cs`
@@ -62,11 +63,13 @@ JumpAndRun/
 
 ### 4. World Representation
 *   **Location**: `World/`
-*   **Concept**: Locations are logical entities, not just tiles. NPCs navigate between `Location` objects (e.g., "Move from Home to Bakery").
+*   **Concept**: Locations are logical entities that act as **Need Providers**.
 ```csharp
+class Location {
+    Dictionary<NeedType, float> NeedSatisfactionRates; // e.g., { Hunger: 20.0f }
+}
 class Town {
-    List<Location> Locations;
-    // Methods to find nearest tavern, workplace, etc.
+    Location GetBestLocationForNeed(NeedType need);
 }
 ```
 

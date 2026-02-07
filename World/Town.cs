@@ -26,5 +26,12 @@ namespace JumpAndRun.World
         {
             return Locations.Where(l => l.Type == type).ToList();
         }
+
+        public Location GetBestLocationForNeed(JumpAndRun.Simulation.NeedType need)
+        {
+            // Simple logic: Find first location that satisfies the need
+            // Future: Find closest, or highest rate
+            return Locations.FirstOrDefault(l => l.GetNeedRate(need) > 0);
+        }
     }
 }

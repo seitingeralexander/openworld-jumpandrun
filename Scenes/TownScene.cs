@@ -65,9 +65,15 @@ namespace JumpAndRun.Scenes
         {
             // 1. Create Locations
             var home = new Location("home_01", "Baker's Home", new Vector2(100, 100), LocationType.Home);
+            home.SetNeedRate(NeedType.Energy, 10f); // Sleeps restores 10/sec
+
             var bakery = new Location("bakery_01", "Bakery", new Vector2(300, 100), LocationType.Work);
+            
             var market = new Location("market_01", "Market", new Vector2(300, 300), LocationType.Service);
+            market.SetNeedRate(NeedType.Hunger, 20f); // Eating restores 20/sec
+            
             var tavern = new Location("tavern_01", "Tavern", new Vector2(100, 300), LocationType.Leisure);
+            tavern.SetNeedRate(NeedType.Social, 15f);
 
             _context.Town.AddLocation(home);
             _context.Town.AddLocation(bakery);

@@ -80,6 +80,21 @@ namespace JumpAndRun.Simulation
             }
         }
 
+        private void RecoverNeeds(NPC npc, float dt)
+        {
+            if (!string.IsNullOrEmpty(npc.CurrentLocationId))
+            {
+                var loc = _context.Town.GetLocation(npc.CurrentLocationId);
+                if (loc != null)
+                {
+                    foreach (var kvp in loc.NeedSatisfactionRates)
+                    {
+                        npc.Needs.Modify(kvp.Key, kvp.Value * dt);
+                    }
+                }
+            }
+        }
+
         private bool HasCriticalNeeds(NPC npc)
         {
             return npc.Needs.IsCritical(NeedType.Hunger) || npc.Needs.IsCritical(NeedType.Energy);
@@ -87,38 +102,42 @@ namespace JumpAndRun.Simulation
 
         private void ResolveCriticalNeeds(NPC npc, float dt)
         {
-            // Simple override logic
-            if (npc.Needs.IsCritical(NeedType.Energy))
-            {
-                // Go Home to Sleep
-                // Find Home
-                var home = _context.Town.GetLocation(npc.Background.HomeLocationId);
-                if (home != null)
-                {
-                    MoveTo(npc, home, dt);
-                    if (IsAt(npc, home))
-                    {
-                        npc.State = NPCState.Sleeping;
-                        npc.Needs.Modify(NeedType.Energy, 5.0f); // Recover fast
-                    }
-                }
-            }
-            else if (npc.Needs.IsCritical(NeedType.Hunger))
-            {
-                // Find Food (e.g. Market or Home)
-                // For now, assume any "Food" place.
-                // Or just Market.
-                var market = _context.Town.GetLocationsByType(LocationType.Service).FirstOrDefault(); // Assuming Service includes food logic for now
-                if (market != null)
-                {
-                    MoveTo(npc, market, dt);
-                    if (IsAt(npc, market))
-                    {
-                         npc.State = NPCState.Interacting; // Eating
-                         npc.Needs.Modify(NeedType.Hunger, 5.0f);
-                    }
-                }
-            }
+             // Check if we are currently satisfying a critical need
+             // If so, and not yet satisfied, STAY here.
+             
+             // Simple Hysteresis:
+             // If Energy is Critical, go to bed.
+             // Stay in bed until Energy is Satisfied (95+).
+             
+             if (npc.Needs.IsCritical(NeedType.Energy) || (npc.State == NPCState.Sleeping && !npc.Needs.IsSatisfied(NeedType.Energy)))
+             {
+                 var bed = _context.Town.GetBestLocationForNeed(NeedType.Energy);
+                 if (bed != null)
+                 {
+                     MoveTo(npc, bed, dt);
+                     if (IsAt(npc, bed))
+                     {
+                         npc.State = NPCState.Sleeping;
+                         // Recovery happens in RecoverNeeds now
+                     }
+                 }
+             }
+             else if (npc.Needs.IsCritical(NeedType.Hunger) || (npc.State == NPCState.Interacting && !npc.Needs.IsSatisfied(NeedType.Hunger) && npc.Needs.GetValue(NeedType.Hunger) < 90)) // Heuristic to differentiate eating from working
+             {
+                 // Small issue: "Interacting" is used for Work too.
+                 // We need to know if we are eating. 
+                 // For now, let's assume if we are at a food place, we are eating.
+                 
+                 var foodPlace = _context.Town.GetBestLocationForNeed(NeedType.Hunger);
+                 if (foodPlace != null)
+                 {
+                     MoveTo(npc, foodPlace, dt);
+                     if (IsAt(npc, foodPlace))
+                     {
+                         npc.State = NPCState.Interacting;
+                     }
+                 }
+             }
         }
 
         private void FollowSchedule(NPC npc, float dt)

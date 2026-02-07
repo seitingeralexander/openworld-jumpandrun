@@ -1,4 +1,6 @@
 using Microsoft.Xna.Framework;
+using System.Collections.Generic;
+using JumpAndRun.Simulation;
 
 namespace JumpAndRun.World
 {
@@ -17,6 +19,7 @@ namespace JumpAndRun.World
         public Vector2 Position { get; set; }
         public LocationType Type { get; set; }
         public int Capacity { get; set; } = 10;
+        public Dictionary<NeedType, float> NeedSatisfactionRates { get; private set; }
 
         public Location(string id, string name, Vector2 position, LocationType type)
         {
@@ -24,6 +27,17 @@ namespace JumpAndRun.World
             Name = name;
             Position = position;
             Type = type;
+            NeedSatisfactionRates = new Dictionary<NeedType, float>();
+        }
+
+        public void SetNeedRate(NeedType need, float rate)
+        {
+            NeedSatisfactionRates[need] = rate;
+        }
+
+        public float GetNeedRate(NeedType need)
+        {
+            return NeedSatisfactionRates.ContainsKey(need) ? NeedSatisfactionRates[need] : 0f;
         }
     }
 }
