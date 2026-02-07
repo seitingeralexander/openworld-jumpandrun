@@ -14,8 +14,8 @@ namespace JumpAndRun.Components
 
         public override void Start()
         {
-            // Initialize position from persistent player data
-            Owner.Position = PlayerData.Position;
+            // Initialize position from persistent player data (TownPosition for top-down scenes)
+            Owner.Position = PlayerData.TownPosition;
         }
 
         public override void Update(GameTime gameTime)
@@ -49,8 +49,9 @@ namespace JumpAndRun.Components
             
             Camera.Follow(Owner.Position);
 
-            // Sync position back to persistent player data
-            PlayerData.Position = Owner.Position;
+            // Sync position back to persistent player data (TownPosition for top-down scenes)
+            PlayerData.TownPosition = Owner.Position;
+            PlayerData.Position = Owner.Position; // Also update general position for compatibility
         }
     }
 }

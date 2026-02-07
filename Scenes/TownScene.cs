@@ -70,6 +70,9 @@ namespace JumpAndRun.Scenes
             // Update Player
             _player.Update(gameTime);
 
+            // Check portal collisions
+            CheckPortalCollisions();
+
             // === Camera Zoom Controls ===
             // Keyboard: + / = to zoom in, - to zoom out, 0 to reset
             if (InputManager.Instance.IsKeyPressed(Keys.OemPlus) || InputManager.Instance.IsKeyPressed(Keys.Add))
@@ -97,6 +100,27 @@ namespace JumpAndRun.Scenes
             }
         }
 
+        private void CheckPortalCollisions()
+        {
+            foreach (var loc in Context.Town.Locations)
+            {
+                if (!loc.IsPortal) continue;
+                
+                float distance = Vector2.Distance(_player.Position, loc.Position);
+                if (distance < 30f) // Portal trigger radius
+                {
+                    // Offset player position slightly away from portal to prevent re-entry on return
+                    Vector2 awayFromPortal = _player.Position - loc.Position;
+                    if (awayFromPortal != Vector2.Zero) awayFromPortal.Normalize();
+                    Context.Player.TownPosition = loc.Position + awayFromPortal * 50f;
+                    
+                    var scene = SceneFactory.Create(loc.TargetSceneId);
+                    SceneManager.Instance.LoadScene(scene);
+                    return; // Exit immediately after scene change
+                }
+            }
+        }
+
         public override void Draw(SpriteBatch spriteBatch)
         {
             _graphicsDevice.Clear(Color.DarkOliveGreen);
@@ -113,6 +137,7 @@ namespace JumpAndRun.Scenes
                     case LocationType.Work: color = Color.Orange; break;
                     case LocationType.Service: color = Color.Green; break;
                     case LocationType.Leisure: color = Color.Purple; break;
+                    case LocationType.Portal: color = Color.Magenta; break;
                 }
                 spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X - 20, (int)loc.Position.Y - 20, 40, 40), color);
                 

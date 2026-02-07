@@ -54,7 +54,8 @@ namespace JumpAndRun.Core
 
                 var location = new Location(loc.Id, loc.Name, position, locationType)
                 {
-                    Capacity = loc.Capacity
+                    Capacity = loc.Capacity,
+                    TargetSceneId = loc.TargetSceneId // Portal target scene
                 };
 
                 // Set need satisfaction rates

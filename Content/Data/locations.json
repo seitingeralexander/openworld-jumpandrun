@@ -60,6 +60,17 @@
       "type": "Work",
       "capacity": 5,
       "needRates": {}
+    },
+    {
+      "id": "cave_01",
+      "name": "Cave Entrance",
+      "position": {
+        "x": 400,
+        "y": 200
+      },
+      "type": "Portal",
+      "targetSceneId": "SideScrollScene",
+      "needRates": {}
     }
   ]
 }

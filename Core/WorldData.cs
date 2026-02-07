@@ -22,6 +22,7 @@ namespace JumpAndRun.Core
         public string Type { get; set; }
         public int Capacity { get; set; } = 10;
         public Dictionary<string, float> NeedRates { get; set; } = new();
+        public string TargetSceneId { get; set; } // For portal locations
     }
 
     public class PositionData

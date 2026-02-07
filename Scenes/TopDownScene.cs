@@ -80,7 +80,7 @@ namespace JumpAndRun.Scenes
                  {
                      // Simple Trigger for now
                      _player.GetComponent<SpriteRenderer>().Color = Color.Blue;
-                     SceneManager.Instance.LoadScene(new SideScrollScene(_graphicsDevice));
+                     SceneManager.Instance.LoadScene(SceneFactory.Create("SideScrollScene"));
                  }
                  else
                  {

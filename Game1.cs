@@ -29,6 +29,9 @@ public class Game1 : Game
         // Setup world data (NPCs, Locations) once at game start
         WorldDataLoader.Initialize(SimContext.Instance);
         
+        // Initialize SceneFactory for portal-based scene transitions
+        SceneFactory.Initialize(GraphicsDevice, Content);
+        
         // Run verification tests logic (Headless check)
         JumpAndRun.Tests.TestRunner.RunTests();
 

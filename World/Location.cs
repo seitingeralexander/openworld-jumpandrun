@@ -9,7 +9,8 @@ namespace JumpAndRun.World
         Home,
         Work,
         Leisure,
-        Service
+        Service,
+        Portal
     }
 
     public class Location
@@ -20,6 +21,10 @@ namespace JumpAndRun.World
         public LocationType Type { get; set; }
         public int Capacity { get; set; } = 10;
         public Dictionary<NeedType, float> NeedSatisfactionRates { get; private set; }
+        
+        // Portal properties
+        public string TargetSceneId { get; set; } // e.g., "SideScrollScene"
+        public bool IsPortal => !string.IsNullOrEmpty(TargetSceneId);
 
         public Location(string id, string name, Vector2 position, LocationType type)
         {

@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Content;
 using JumpAndRun.Core;
 using JumpAndRun.Entities;
 using JumpAndRun.Components;
@@ -12,12 +13,15 @@ namespace JumpAndRun.Scenes
         private GameObject _player;
         private Camera _camera;
         private GraphicsDevice _graphicsDevice;
+        private ContentManager _content;
         private List<GameObject> _platforms;
+        private Rectangle _exitPortal;
         
-        public SideScrollScene(GraphicsDevice graphicsDevice)
+        public SideScrollScene(GraphicsDevice graphicsDevice, ContentManager content)
             : base(SimContext.Instance)
         {
             _graphicsDevice = graphicsDevice;
+            _content = content;
             _platforms = new List<GameObject>();
             _camera = new Camera(_graphicsDevice.Viewport);
         }
@@ -33,7 +37,10 @@ namespace JumpAndRun.Scenes
             // Create Platforms
             CreatePlatform(0, 400, 800, 20, Color.Gray); // Floor
             CreatePlatform(300, 300, 200, 20, Color.Brown); // Platform
-            CreatePlatform(-20, 0, 20, 600, Color.Gray); // Wall
+            CreatePlatform(-20, 0, 20, 600, Color.Gray); // Left Wall
+
+            // Exit portal (door back to town) - at the left edge
+            _exitPortal = new Rectangle(0, 350, 30, 50);
 
             // Create Player Entity
             _player = new GameObject();
@@ -65,6 +72,24 @@ namespace JumpAndRun.Scenes
         {
             _player.Update(gameTime);
             foreach(var p in _platforms) p.Update(gameTime);
+
+            // Check exit portal collision
+            CheckExitPortal();
+        }
+
+        private void CheckExitPortal()
+        {
+            var playerBounds = new Rectangle(
+                (int)_player.Position.X - 12, 
+                (int)_player.Position.Y - 24, 
+                24, 48);
+
+            if (playerBounds.Intersects(_exitPortal))
+            {
+                // Return to TownScene
+                var townScene = SceneFactory.Create("TownScene");
+                SceneManager.Instance.LoadScene(townScene);
+            }
         }
 
         public override void UnloadContent()
@@ -93,7 +118,16 @@ namespace JumpAndRun.Scenes
                 platform.Draw(spriteBatch);
             }
 
+            // Draw exit portal (door)
+            Texture2D pixel = new Texture2D(_graphicsDevice, 1, 1);
+            pixel.SetData(new[] { Color.White });
+            spriteBatch.Draw(pixel, _exitPortal, Color.Purple);
+            pixel.Dispose();
+
             _player.Draw(spriteBatch);
+
+            // Draw exit label
+            DebugFont.DrawString(spriteBatch, "EXIT", new Vector2(_exitPortal.X, _exitPortal.Y - 15), Color.White);
 
             spriteBatch.End();
         }
