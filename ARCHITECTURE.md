@@ -14,28 +14,65 @@ The application is structured into distinct layers:
 
 ```mermaid
 graph TD
-    subgraph SimContext [SimContext Singleton]
-        P[Player Data]
+    subgraph Game [Game Loop]
+        G[Game1]
+        SM[SceneManager]
+    end
+
+    subgraph SimContext [SimContext Singleton - Persistent State]
+        subgraph PlayerData [Player]
+            P[Position]
+            PS[PlayerStats]
+            INV[Inventory]
+            EQ[Equipment]
+        end
+        
+        subgraph NPCData [NPCs]
+            NPC1[NPC List]
+            Needs[Needs: Hunger, Energy, Social]
+            Schedule[Schedule: Daily Routine]
+        end
+        
         TS[TimeSystem]
-        T[Town/Locations]
-        NPCs[NPC List]
         NS[NPCSystem]
+        T[Town/Locations]
     end
-    
-    G[Game1] -->|Update| SimContext
+
+    subgraph World [World Layer]
+        LOC[Locations]
+        RATES[NeedSatisfactionRates]
+    end
+
+    subgraph Scenes [View Layer - Read Only]
+        TS2[TownScene]
+        TDS[TopDownScene]
+        SSS[SideScrollScene]
+    end
+
+    subgraph Controllers [Scene-Specific Controllers]
+        TPV[TopDownController]
+        SPV[SideScrollController]
+    end
+
     G -->|Initialize| WDL[WorldDataLoader]
-    
-    G --> SM[SceneManager]
-    SM --> S[Active Scene]
-    S -.->|reads| SimContext
-    
-    subgraph Scenes
-        TS2[TownScene] -->|creates| TPV[TopDownController]
-        SSS[SideScrollScene] -->|creates| SPV[SideScrollController]
-    end
+    G -->|Update| SimContext
+    G --> SM
+    SM --> Scenes
+
+    NS -->|decays| Needs
+    NS -->|follows| Schedule
+    NS -->|queries| T
+    TS -->|triggers| NS
+
+    TS2 -->|creates| TPV
+    SSS -->|creates| SPV
     
     TPV -.->|syncs Position| P
     SPV -.->|syncs Position| P
+    
+    Scenes -.->|reads| SimContext
+    T --> LOC
+    LOC --> RATES
 ```
 
 ## Directory Structure
