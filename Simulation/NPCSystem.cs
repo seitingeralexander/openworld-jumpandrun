@@ -44,6 +44,9 @@ namespace JumpAndRun.Simulation
             // 1. Decay Needs
             DecayNeeds(npc, dt);
 
+            // 1.5 Recover Needs (if at a location)
+            RecoverNeeds(npc, dt);
+
             // 2. Check Critical Needs
             if (HasCriticalNeeds(npc))
             {

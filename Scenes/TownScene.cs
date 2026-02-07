@@ -38,6 +38,17 @@ namespace JumpAndRun.Scenes
             // Initialize DebugFont
             DebugFont.Initialize(_graphicsDevice);
 
+            try
+            {
+                // Load SpriteFont (Standard)
+                //_font = _content.Load<SpriteFont>("File");
+            }
+            catch
+            {
+                // Fallback to debug font if load fails
+                DebugFont.Initialize(_graphicsDevice);
+            }
+
 
             // Create Player Entity
             Texture2D playerTex = new Texture2D(_graphicsDevice, 16, 16);
