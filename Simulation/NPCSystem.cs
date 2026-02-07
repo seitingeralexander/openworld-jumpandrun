@@ -47,18 +47,18 @@ namespace JumpAndRun.Simulation
             // 2. Check Critical Needs
             if (HasCriticalNeeds(npc))
             {
-                ResolveCriticalNeeds(npc);
+                ResolveCriticalNeeds(npc, dt);
             }
             else
             {
                 // 3. Follow Schedule
-                FollowSchedule(npc);
+                FollowSchedule(npc, dt);
             }
         }
 
         private void DecayNeeds(NPC npc, float dt)
         {
-            // Example decay rates (per real second, scaled to game time?)
+                        // Example decay rates (per real second, scaled to game time?)
             // If 1 real sec = 10 game mins.
             // Hunger: 0 to 100. Starves in 3 game days?
             // Let's keep it simple for now: constant decay.
@@ -68,7 +68,6 @@ namespace JumpAndRun.Simulation
             // Continuous decay is smoother for UI bars though.
             
             // Let's assume dt is real seconds.
-            // Decay rate should be configured.
             
             float decayRate = 2.0f * dt; // Arbitrary testing value
             npc.Needs.Modify(NeedType.Hunger, -decayRate);
@@ -86,7 +85,7 @@ namespace JumpAndRun.Simulation
             return npc.Needs.IsCritical(NeedType.Hunger) || npc.Needs.IsCritical(NeedType.Energy);
         }
 
-        private void ResolveCriticalNeeds(NPC npc)
+        private void ResolveCriticalNeeds(NPC npc, float dt)
         {
             // Simple override logic
             if (npc.Needs.IsCritical(NeedType.Energy))
@@ -96,7 +95,7 @@ namespace JumpAndRun.Simulation
                 var home = _context.Town.GetLocation(npc.Background.HomeLocationId);
                 if (home != null)
                 {
-                    MoveTo(npc, home);
+                    MoveTo(npc, home, dt);
                     if (IsAt(npc, home))
                     {
                         npc.State = NPCState.Sleeping;
@@ -112,7 +111,7 @@ namespace JumpAndRun.Simulation
                 var market = _context.Town.GetLocationsByType(LocationType.Service).FirstOrDefault(); // Assuming Service includes food logic for now
                 if (market != null)
                 {
-                    MoveTo(npc, market);
+                    MoveTo(npc, market, dt);
                     if (IsAt(npc, market))
                     {
                          npc.State = NPCState.Interacting; // Eating
@@ -122,7 +121,7 @@ namespace JumpAndRun.Simulation
             }
         }
 
-        private void FollowSchedule(NPC npc)
+        private void FollowSchedule(NPC npc, float dt)
         {
             int currentHour = _context.Time.Hour;
             var block = npc.Schedule.GetBlockForHour(currentHour);
@@ -139,7 +138,7 @@ namespace JumpAndRun.Simulation
                 
                 if (target != null)
                 {
-                    MoveTo(npc, target);
+                    MoveTo(npc, target, dt);
                     if (IsAt(npc, target))
                     {
                          // Perform Action
@@ -159,29 +158,23 @@ namespace JumpAndRun.Simulation
             }
         }
 
-        private void MoveTo(NPC npc, Location location)
+        private void MoveTo(NPC npc, Location location, float dt)
         {
-            // Instant teleport for Phase 1/2 logic test? 
-            // User put "Movement & Pathfinding" in Step 9.
-            // "Locations are semantic" -> "NPCs move between locations, not random tiles."
-            // "npc.MoveTo(targetLocation.Position);"
-            
-            // Simple movement logic:
-            float speed = 100f; // px/sec
-             // We need dt here, but I didn't pass it to helper. 
-             // Let's just snap for now to verify logic, or add simple lerp if dt available.
-             
-            // Let's update Position purely for visualization
+            float speed = 50f; // px/sec - slower than player (200)
+
             Vector2 dir = location.Position - npc.Position;
-            if (dir.Length() > 5f)
+            float distance = dir.Length();
+            
+            if (distance > speed * dt)
             {
                 dir.Normalize();
-                npc.Position += dir * 2.0f; // Arbitrary speed per update tick
+                npc.Position += dir * speed * dt;
                 npc.State = NPCState.Moving;
                 npc.CurrentLocationId = null; // In transit
             }
             else
             {
+                // Snap to target if close enough
                 npc.Position = location.Position;
                 npc.CurrentLocationId = location.Id; // Arrived
             }

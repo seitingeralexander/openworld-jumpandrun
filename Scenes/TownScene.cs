@@ -3,6 +3,8 @@ using Microsoft.Xna.Framework.Graphics;
 using JumpAndRun.Core;
 using JumpAndRun.World;
 using JumpAndRun.Simulation;
+using JumpAndRun.Entities;
+using JumpAndRun.Components;
 using System.Collections.Generic;
 
 namespace JumpAndRun.Scenes
@@ -11,15 +13,19 @@ namespace JumpAndRun.Scenes
     {
         private SimContext _context;
         private NPCSystem _npcSystem;
-        private SpriteFont _font;
+        // private SpriteFont _font; (Unused)
         private Texture2D _pixel;
         private GraphicsDevice _graphicsDevice;
+
+        private GameObject _player;
+        private Camera _camera;
 
         public TownScene(GraphicsDevice graphicsDevice)
         {
             _graphicsDevice = graphicsDevice;
             _context = new SimContext();
             _npcSystem = new NPCSystem(_context);
+            _camera = new Camera(_graphicsDevice.Viewport);
         }
 
         public override void LoadContent()
@@ -27,7 +33,7 @@ namespace JumpAndRun.Scenes
             _pixel = new Texture2D(_graphicsDevice, 1, 1);
             _pixel.SetData(new[] { Color.White });
 
-            // Load Font (assuming one exists, or we use a default simple drawing if not available)
+                        // Load Font (assuming one exists, or we use a default simple drawing if not available)
             // For now, let's try to load a font, but if it fails, we need a fallback or ensure it exists.
             // The user project structure shows Content folder.
             // Let's assume "File" font exists or we just draw rectangles for now if font fails.
@@ -37,6 +43,19 @@ namespace JumpAndRun.Scenes
             // Checking previous file list... no font file explicitly seen in root, but Content folder exists.
             // I'll just use a basic primitive drawing for now and maybe try to load a font.
             // If I can't load a font, I'll draw bars/colors to represent state.
+
+
+            // Create Player Entity
+            Texture2D playerTex = new Texture2D(_graphicsDevice, 16, 16);
+            Color[] playerData = new Color[16 * 16];
+            for(int i=0; i<playerData.Length; i++) playerData[i] = Color.Green;
+            playerTex.SetData(playerData);
+
+            _player = new GameObject();
+            _player.Position = new Vector2(200, 200);
+            _player.AddComponent(new SpriteRenderer(playerTex));
+            _player.AddComponent(new TopDownController() { Camera = _camera });
+            _player.AddComponent(new BoxCollider(16, 16));
             
             // Setup Town
             SetupWorld();
@@ -79,13 +98,16 @@ namespace JumpAndRun.Scenes
 
             // Update Simulation
             _npcSystem.Update(gameTime);
+
+            // Update Player
+            _player.Update(gameTime);
         }
 
         public override void Draw(SpriteBatch spriteBatch)
         {
             _graphicsDevice.Clear(Color.DarkOliveGreen);
 
-            spriteBatch.Begin();
+            spriteBatch.Begin(transformMatrix: _camera.Transform);
 
             // Draw Locations
             foreach (var loc in _context.Town.Locations)
@@ -111,11 +133,21 @@ namespace JumpAndRun.Scenes
                 DrawBar(spriteBatch, new Vector2(npc.Position.X - 10, npc.Position.Y - 20), npc.Needs.GetValue(NeedType.Energy) / 100f, Color.Yellow);
             }
 
+            // Draw Player
+            _player.Draw(spriteBatch);
+
+            // Draw Time Info
+            // We need to transform this back to screen space or draw in a separate batch if we want it UI-fixed.
+            // For now, let's draw it in world space but maybe above everything, or switch batch.
+            // Using a second batch for UI is better.
+            spriteBatch.End();
+
+            spriteBatch.Begin(); // UI Batch (No camera transform)
+
             // Draw Time Info (Simple Representation if no font)
             // Draw a clock hand or progress bar for day?
             int timeWidth = (int)((_context.Time.Hour * 60 + _context.Time.Minute) / (24f * 60f) * 800);
             spriteBatch.Draw(_pixel, new Rectangle(0, 0, timeWidth, 10), Color.White);
-            
             spriteBatch.End();
         }
 
