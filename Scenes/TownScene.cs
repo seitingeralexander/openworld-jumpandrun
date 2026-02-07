@@ -49,17 +49,33 @@ namespace JumpAndRun.Scenes
             }
 
 
-            // Create Player Entity (visual representation for this scene)
-            Texture2D playerTex = new Texture2D(_graphicsDevice, 16, 16);
-            Color[] playerData = new Color[16 * 16];
-            for(int i=0; i<playerData.Length; i++) playerData[i] = Color.Green;
-            playerTex.SetData(playerData);
+            // Create Player Entity with animated ranger sprite
+            Texture2D rangerSheet = _content.Load<Texture2D>("Sprites/ranger_topdown");
 
             _player = new GameObject();
-            // Position is set by TopDownController.Start() from Context.Player.Position
-            _player.AddComponent(new SpriteRenderer(playerTex));
+            
+            // Add SpriteAnimator with ranger sprite sheet (128x128 frames, 8x8 grid from 1024x1024 image)
+            var animator = new SpriteAnimator(rangerSheet, 128, 128);
+            
+            // Define animations based on sprite sheet layout:
+            // Rows 0-3: Idle animations (down, up, left, right)
+            // Rows 4-7: Walk animations (down, up, left, right)
+            animator.AddAnimations(
+                // Idle animations (slower frame rate for subtle movement)
+                new Animation("idle_down",  0, 8, 0.15f),
+                new Animation("idle_up",    1, 8, 0.15f),
+                new Animation("idle_left",  2, 8, 0.15f),
+                new Animation("idle_right", 3, 8, 0.15f),
+                // Walk animations (faster frame rate for movement)
+                new Animation("walk_down",  4, 8, 0.08f),
+                new Animation("walk_up",    5, 8, 0.08f),
+                new Animation("walk_left",  6, 8, 0.08f),
+                new Animation("walk_right", 7, 8, 0.08f)
+            );
+            
+            _player.AddComponent(animator);
             _player.AddComponent(new TopDownController() { Camera = _camera });
-            _player.AddComponent(new BoxCollider(16, 16));
+            _player.AddComponent(new BoxCollider(128, 128)); // Match 128x128 sprite frame size
         }
 
 
@@ -153,11 +169,12 @@ namespace JumpAndRun.Scenes
             // Draw NPCs - only those in this scene
             foreach (var npc in Context.NPCs.Where(n => n.CurrentSceneId == SceneId))
             {
-                spriteBatch.Draw(_pixel, new Rectangle((int)npc.Position.X - 5, (int)npc.Position.Y - 5, 10, 10), Color.White);
+                // Draw NPC as 64x64 to match player sprite size
+                spriteBatch.Draw(_pixel, new Rectangle((int)npc.Position.X - 32, (int)npc.Position.Y - 32, 64, 64), Color.White);
                 
                 // Draw Needs Bar (Health-like) - above the NPC
-                DrawBar(spriteBatch, new Vector2(npc.Position.X - 10, npc.Position.Y - 15), npc.Needs.GetValue(NeedType.Hunger) / 100f, Color.Red);
-                DrawBar(spriteBatch, new Vector2(npc.Position.X - 10, npc.Position.Y - 20), npc.Needs.GetValue(NeedType.Energy) / 100f, Color.Yellow);
+                DrawBar(spriteBatch, new Vector2(npc.Position.X - 32, npc.Position.Y - 45), npc.Needs.GetValue(NeedType.Hunger) / 100f, Color.Red);
+                DrawBar(spriteBatch, new Vector2(npc.Position.X - 32, npc.Position.Y - 50), npc.Needs.GetValue(NeedType.Energy) / 100f, Color.Yellow);
 
                 // Get current schedule block
                 var currentBlock = npc.Schedule.GetBlockForHour(Context.Time.Hour);
