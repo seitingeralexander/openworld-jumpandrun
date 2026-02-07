@@ -8,7 +8,8 @@ namespace JumpAndRun.Simulation
         Idle,
         Moving,
         Interacting,
-        Sleeping
+        Sleeping,
+        Eating
     }
 
     public class NPC

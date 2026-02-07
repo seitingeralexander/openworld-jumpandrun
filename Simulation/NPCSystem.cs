@@ -110,6 +110,14 @@ namespace JumpAndRun.Simulation
                 return true;
             }
 
+            // Hysteresis for Hunger/Eating:
+            // If the NPC is already eating, we consider the need critical until it is fully satisfied (>= 95).
+            // This prevents stopping eating immediately after crossing the 20 barrier.
+            if (npc.State == NPCState.Eating && !npc.Needs.IsSatisfied(NeedType.Hunger))
+            {
+                return true;
+            }
+
             return isCritical;
         }
 
@@ -135,21 +143,19 @@ namespace JumpAndRun.Simulation
                      }
                  }
              }
-             else if (npc.Needs.IsCritical(NeedType.Hunger) || (npc.State == NPCState.Interacting && !npc.Needs.IsSatisfied(NeedType.Hunger) && npc.Needs.GetValue(NeedType.Hunger) < 90)) // Heuristic to differentiate eating from working
+             else if (npc.Needs.IsCritical(NeedType.Hunger) || (npc.State == NPCState.Eating && !npc.Needs.IsSatisfied(NeedType.Hunger)))
              {
-                 // Small issue: "Interacting" is used for Work too.
-                 // We need to know if we are eating. 
-                 // For now, let's assume if we are at a food place, we are eating.
-                 
-                 var foodPlace = _context.Town.GetBestLocationForNeed(NeedType.Hunger);
-                 if (foodPlace != null)
-                 {
-                     MoveTo(npc, foodPlace, dt);
-                     if (IsAt(npc, foodPlace))
-                     {
-                         npc.State = NPCState.Interacting;
-                     }
-                 }
+                  // Go to food place and eat until fully satisfied
+                  var foodPlace = _context.Town.GetBestLocationForNeed(NeedType.Hunger);
+                  if (foodPlace != null)
+                  {
+                      MoveTo(npc, foodPlace, dt);
+                      if (IsAt(npc, foodPlace))
+                      {
+                          npc.State = NPCState.Eating;
+                          // Recovery happens in RecoverNeeds
+                      }
+                  }
              }
         }
 
