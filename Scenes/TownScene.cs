@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Content;
 using JumpAndRun.Core;
 using JumpAndRun.World;
 using JumpAndRun.Simulation;
@@ -11,18 +12,19 @@ namespace JumpAndRun.Scenes
 {
     public class TownScene : Scene
     {
+        private ContentManager _content;
+        private GraphicsDevice _graphicsDevice;
         private SimContext _context;
         private NPCSystem _npcSystem;
-        // private SpriteFont _font; (Unused)
+        private SpriteFont _font;
         private Texture2D _pixel;
-        private GraphicsDevice _graphicsDevice;
-
         private GameObject _player;
         private Camera _camera;
 
-        public TownScene(GraphicsDevice graphicsDevice)
+        public TownScene(GraphicsDevice graphicsDevice, ContentManager content)
         {
             _graphicsDevice = graphicsDevice;
+            _content = content;
             _context = new SimContext();
             _npcSystem = new NPCSystem(_context);
             _camera = new Camera(_graphicsDevice.Viewport);
@@ -33,16 +35,16 @@ namespace JumpAndRun.Scenes
             _pixel = new Texture2D(_graphicsDevice, 1, 1);
             _pixel.SetData(new[] { Color.White });
 
-                        // Load Font (assuming one exists, or we use a default simple drawing if not available)
-            // For now, let's try to load a font, but if it fails, we need a fallback or ensure it exists.
-            // The user project structure shows Content folder.
-            // Let's assume "File" font exists or we just draw rectangles for now if font fails.
-            // Actually, without a font, debug info is hard.
-            // I'll try to load "File" or "Arial" if standard.
-            // Let's assume a default font "File" or similar from previous scenes?
-            // Checking previous file list... no font file explicitly seen in root, but Content folder exists.
-            // I'll just use a basic primitive drawing for now and maybe try to load a font.
-            // If I can't load a font, I'll draw bars/colors to represent state.
+            try
+            {
+                _font = _content.Load<SpriteFont>("File");
+                // Font loading disabled due to environment limitations (missing freetype)
+            }
+            catch
+            {
+                // Fallback or handle error if font not built yet
+                System.Console.WriteLine("Font 'File' could not be loaded.");
+            }
 
 
             // Create Player Entity
@@ -127,6 +129,12 @@ namespace JumpAndRun.Scenes
                     case LocationType.Leisure: color = Color.Purple; break;
                 }
                 spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X - 20, (int)loc.Position.Y - 20, 40, 40), color);
+                
+                if (_font != null)
+                {
+                    Vector2 textSize = _font.MeasureString(loc.Name);
+                    spriteBatch.DrawString(_font, loc.Name, loc.Position - new Vector2(textSize.X / 2, 40), Color.White);
+                }
             }
 
             // Draw NPC
@@ -137,6 +145,13 @@ namespace JumpAndRun.Scenes
                 // Draw Needs Bar (Health-like)
                 DrawBar(spriteBatch, new Vector2(npc.Position.X - 10, npc.Position.Y - 15), npc.Needs.GetValue(NeedType.Hunger) / 100f, Color.Red);
                 DrawBar(spriteBatch, new Vector2(npc.Position.X - 10, npc.Position.Y - 20), npc.Needs.GetValue(NeedType.Energy) / 100f, Color.Yellow);
+
+                if (_font != null)
+                {
+                    string info = $"{npc.Name}\n{npc.State}";
+                    Vector2 infoSize = _font.MeasureString(info);
+                    spriteBatch.DrawString(_font, info, npc.Position - new Vector2(infoSize.X / 2, 50), Color.White);
+                }
             }
 
             // Draw Player
