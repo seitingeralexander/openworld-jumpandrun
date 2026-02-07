@@ -98,5 +98,14 @@ namespace JumpAndRun.Core
         {
             return _currentKeyboardState.IsKeyDown(key);
         }
+
+        /// <summary>
+        /// Gets the scroll wheel delta since last frame.
+        /// Positive = scroll up (zoom in), Negative = scroll down (zoom out)
+        /// </summary>
+        public int GetScrollDelta()
+        {
+            return _currentMouseState.ScrollWheelValue - _previousMouseState.ScrollWheelValue;
+        }
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Input;
 using JumpAndRun.Core;
 using JumpAndRun.World;
 using JumpAndRun.Simulation;
@@ -112,6 +113,32 @@ namespace JumpAndRun.Scenes
 
             // Update Player
             _player.Update(gameTime);
+
+            // === Camera Zoom Controls ===
+            // Keyboard: + / = to zoom in, - to zoom out, 0 to reset
+            if (InputManager.Instance.IsKeyPressed(Keys.OemPlus) || InputManager.Instance.IsKeyPressed(Keys.Add))
+            {
+                _camera.ZoomIn();
+            }
+            if (InputManager.Instance.IsKeyPressed(Keys.OemMinus) || InputManager.Instance.IsKeyPressed(Keys.Subtract))
+            {
+                _camera.ZoomOut();
+            }
+            if (InputManager.Instance.IsKeyPressed(Keys.D0) || InputManager.Instance.IsKeyPressed(Keys.NumPad0))
+            {
+                _camera.ResetZoom();
+            }
+
+            // Mouse scroll wheel: scroll up (positive) = zoom in, scroll down (negative) = zoom out
+            int scrollDelta = InputManager.Instance.GetScrollDelta();
+            if (scrollDelta > 0)
+            {
+                _camera.ZoomIn();
+            }
+            else if (scrollDelta < 0)
+            {
+                _camera.ZoomOut();
+            }
         }
 
         public override void Draw(SpriteBatch spriteBatch)
@@ -172,6 +199,11 @@ namespace JumpAndRun.Scenes
             // Draw a clock hand or progress bar for day?
             int timeWidth = (int)((_context.Time.Hour * 60 + _context.Time.Minute) / (24f * 60f) * 800);
             spriteBatch.Draw(_pixel, new Rectangle(0, 0, timeWidth, 10), Color.White);
+
+            // Draw Zoom Level Indicator
+            string zoomText = $"Zoom: {_camera.Zoom:F1}x (+/- or Scroll, 0 to reset)";
+            DebugFont.DrawString(spriteBatch, zoomText, new Vector2(10, 20), Color.White);
+
             spriteBatch.End();
         }
 
