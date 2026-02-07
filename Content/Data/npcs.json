@@ -1,0 +1,62 @@
+{
+    "npcs": [
+        {
+            "name": "Elena",
+            "background": {
+                "job": "Baker",
+                "personality": "Hardworking",
+                "homeLocationId": "home_01"
+            },
+            "initialLocationId": "home_01",
+            "schedule": [
+                {
+                    "startHour": 6,
+                    "endHour": 12,
+                    "action": "Work",
+                    "targetLocationId": "bakery_01"
+                },
+                {
+                    "startHour": 12,
+                    "endHour": 13,
+                    "action": "Eat",
+                    "targetLocationId": "market_01"
+                },
+                {
+                    "startHour": 13,
+                    "endHour": 18,
+                    "action": "Work",
+                    "targetLocationId": "bakery_01"
+                },
+                {
+                    "startHour": 18,
+                    "endHour": 22,
+                    "action": "Socialize",
+                    "targetLocationId": "tavern_01"
+                },
+                {
+                    "startHour": 22,
+                    "endHour": 6,
+                    "action": "Sleep",
+                    "targetLocationId": "home_01"
+                }
+            ]
+        },
+        {
+            "name": "Marcus",
+            "background": {
+                "job": "Blacksmith",
+                "personality": "Gruff",
+                "homeLocationId": "home_02"
+            },
+            "initialLocationId": "home_02",
+            "schedule": [
+                {
+                    "startHour": 7,
+                    "endHour": 19,
+                    "action": "Work",
+                    "targetLocationId": "smithy_01"
+                }
+            ]
+        }
+    ]
+}

@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+using System.Text.Json;
 using Microsoft.Xna.Framework;
 using JumpAndRun.World;
 using JumpAndRun.Simulation;
@@ -6,58 +9,129 @@ namespace JumpAndRun.Core
 {
     /// <summary>
     /// Initializes world data (Locations, NPCs, Schedules) into the SimContext.
-    /// This is the single source of truth for persistent world state.
+    /// Loads from JSON files in Content/Data directory.
     /// </summary>
     public static class WorldDataLoader
     {
+        private const string DataPath = "Content/Data";
+
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
         public static void Initialize(SimContext context)
         {
-            SetupLocations(context);
-            SetupNPCs(context);
+            LoadLocationsFromJson(context);
+            LoadNPCsFromJson(context);
         }
 
-        private static void SetupLocations(SimContext context)
+        // ============ Location Loading ============
+
+        private static void LoadLocationsFromJson(SimContext context)
         {
-            // Home
-            var home = new Location("home_01", "Baker's Home", new Vector2(100, 100), LocationType.Home);
-            home.SetNeedRate(NeedType.Energy, 10f); // Sleep restores 10/sec
+            var path = Path.Combine(DataPath, "locations.json");
 
-            // Work
-            var bakery = new Location("bakery_01", "Bakery", new Vector2(300, 100), LocationType.Work);
+            if (!File.Exists(path))
+            {
+                throw new FileNotFoundException($"[WorldDataLoader] Required file not found: {path}");
+            }
 
-            // Service
-            var market = new Location("market_01", "Market", new Vector2(300, 300), LocationType.Service);
-            market.SetNeedRate(NeedType.Hunger, 20f); // Eating restores 20/sec
+            var json = File.ReadAllText(path);
+            var data = JsonSerializer.Deserialize<WorldData>(json, JsonOptions);
 
-            // Leisure
-            var tavern = new Location("tavern_01", "Tavern", new Vector2(100, 300), LocationType.Leisure);
-            tavern.SetNeedRate(NeedType.Social, 15f);
+            if (data?.Locations == null || data.Locations.Count == 0)
+            {
+                throw new InvalidDataException($"[WorldDataLoader] No locations found in {path}");
+            }
 
-            context.Town.AddLocation(home);
-            context.Town.AddLocation(bakery);
-            context.Town.AddLocation(market);
-            context.Town.AddLocation(tavern);
+            foreach (var loc in data.Locations)
+            {
+                var position = new Vector2(loc.Position?.X ?? 0, loc.Position?.Y ?? 0);
+                var locationType = Enum.TryParse<LocationType>(loc.Type, out var type)
+                    ? type
+                    : LocationType.Service;
+
+                var location = new Location(loc.Id, loc.Name, position, locationType)
+                {
+                    Capacity = loc.Capacity
+                };
+
+                // Set need satisfaction rates
+                if (loc.NeedRates != null)
+                {
+                    foreach (var kvp in loc.NeedRates)
+                    {
+                        if (Enum.TryParse<NeedType>(kvp.Key, out var needType))
+                        {
+                            location.SetNeedRate(needType, kvp.Value);
+                        }
+                    }
+                }
+
+                context.Town.AddLocation(location);
+            }
+
+            Console.WriteLine($"[WorldDataLoader] Loaded {data.Locations.Count} locations from JSON");
         }
 
-        private static void SetupNPCs(SimContext context)
+        // ============ NPC Loading ============
+
+        private static void LoadNPCsFromJson(SimContext context)
         {
-            // Get home location for initial position
-            var home = context.Town.GetLocation("home_01");
+            var path = Path.Combine(DataPath, "npcs.json");
 
-            // Create Elena the Baker
-            var background = new Background("Baker", "Hardworking", "home_01");
-            var elena = new NPC("Elena", background);
-            elena.Position = home?.Position ?? Vector2.Zero;
-            elena.CurrentLocationId = "home_01";
+            if (!File.Exists(path))
+            {
+                throw new FileNotFoundException($"[WorldDataLoader] Required file not found: {path}");
+            }
 
-            // Define Elena's daily schedule
-            elena.Schedule.AddBlock(new ScheduleBlock(6, 12, ScheduleAction.Work, "bakery_01"));
-            elena.Schedule.AddBlock(new ScheduleBlock(12, 13, ScheduleAction.Eat, "market_01"));
-            elena.Schedule.AddBlock(new ScheduleBlock(13, 18, ScheduleAction.Work, "bakery_01"));
-            elena.Schedule.AddBlock(new ScheduleBlock(18, 22, ScheduleAction.Socialize, "tavern_01"));
-            elena.Schedule.AddBlock(new ScheduleBlock(22, 6, ScheduleAction.Sleep, "home_01"));
+            var json = File.ReadAllText(path);
+            var data = JsonSerializer.Deserialize<NPCListData>(json, JsonOptions);
 
-            context.NPCs.Add(elena);
+            if (data?.Npcs == null || data.Npcs.Count == 0)
+            {
+                throw new InvalidDataException($"[WorldDataLoader] No NPCs found in {path}");
+            }
+
+            foreach (var npcData in data.Npcs)
+            {
+                var bg = npcData.Background;
+                var background = new Background(
+                    bg?.Job ?? "Unknown",
+                    bg?.Personality ?? "Neutral",
+                    bg?.HomeLocationId ?? ""
+                );
+
+                var npc = new NPC(npcData.Name, background);
+
+                // Set initial position from location
+                var initialLocation = context.Town.GetLocation(npcData.InitialLocationId);
+                npc.Position = initialLocation?.Position ?? Vector2.Zero;
+                npc.CurrentLocationId = npcData.InitialLocationId ?? "";
+
+                // Add schedule blocks
+                if (npcData.Schedule != null)
+                {
+                    foreach (var block in npcData.Schedule)
+                    {
+                        var action = Enum.TryParse<ScheduleAction>(block.Action, out var act)
+                            ? act
+                            : ScheduleAction.Idle;
+
+                        npc.Schedule.AddBlock(new ScheduleBlock(
+                            block.StartHour,
+                            block.EndHour,
+                            action,
+                            block.TargetLocationId
+                        ));
+                    }
+                }
+
+                context.NPCs.Add(npc);
+            }
+
+            Console.WriteLine($"[WorldDataLoader] Loaded {data.Npcs.Count} NPCs from JSON");
         }
     }
 }

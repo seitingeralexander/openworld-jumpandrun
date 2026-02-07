@@ -17,7 +17,7 @@ namespace JumpAndRun.Simulation
         public Player(string name)
         {
             Name = name;
-            Position = new Vector2(200, 200); // Default spawn position
+            Position = new Vector2(50, 50); // Default spawn position
             Stats = new PlayerStats();
             Inventory = new Inventory();
             Equipment = new Equipment();

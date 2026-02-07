@@ -127,6 +127,8 @@ JumpAndRun/
 ### 3. WorldDataLoader
 *   **Location**: `Core/WorldDataLoader.cs`
 *   **Function**: Initializes world data (Locations, NPCs, Schedules) at game start
+*   **Data Sources**: Loads from `Content/Data/locations.json` and `Content/Data/npcs.json`
+*   **Fallback**: Uses hardcoded defaults if JSON files are missing
 *   **Called**: Once in `Game1.Initialize()` before loading any scene
 
 ### 4. Time System

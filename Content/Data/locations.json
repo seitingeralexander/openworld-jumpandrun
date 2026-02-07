@@ -1,0 +1,65 @@
+{
+  "locations": [
+    {
+      "id": "home_01",
+      "name": "Baker's Home",
+      "position": {
+        "x": 100,
+        "y": 100
+      },
+      "type": "Home",
+      "capacity": 10,
+      "needRates": {
+        "Energy": 10.0
+      }
+    },
+    {
+      "id": "bakery_01",
+      "name": "Bakery",
+      "position": {
+        "x": 300,
+        "y": 100
+      },
+      "type": "Work",
+      "capacity": 10,
+      "needRates": {}
+    },
+    {
+      "id": "market_01",
+      "name": "Market",
+      "position": {
+        "x": 300,
+        "y": 300
+      },
+      "type": "Service",
+      "capacity": 10,
+      "needRates": {
+        "Hunger": 20.0
+      }
+    },
+    {
+      "id": "tavern_01",
+      "name": "Tavern",
+      "position": {
+        "x": 100,
+        "y": 300
+      },
+      "type": "Leisure",
+      "capacity": 10,
+      "needRates": {
+        "Social": 15.0
+      }
+    },
+    {
+      "id": "smithy_01",
+      "name": "Blacksmith Shop",
+      "position": {
+        "x": 500,
+        "y": 100
+      },
+      "type": "Work",
+      "capacity": 5,
+      "needRates": {}
+    }
+  ]
+}
