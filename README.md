@@ -56,7 +56,11 @@ JumpAndRun/
 
 ## 🧩 Architecture
 
-The game follows the standard **MonoGame Gameloop**:
+The game follows the standard **MonoGame Gameloop**.
+
+For a detailed breakdown of the system design, including the **Simulation**, **World**, and **Time Systems**, please refer to [ARCHITECTURE.md](ARCHITECTURE.md).
+
+### Core Loop Overview:
 
 1.  **Initialize()**:
     *   Sets up the graphics device.

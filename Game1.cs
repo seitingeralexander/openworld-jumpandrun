@@ -26,7 +26,7 @@ public class Game1 : Game
         JumpAndRun.Tests.TestRunner.RunTests();
 
         // Load initial scene
-        SceneManager.Instance.LoadScene(new TopDownScene(GraphicsDevice));
+        SceneManager.Instance.LoadScene(new TownScene(GraphicsDevice));
     }
 
     protected override void LoadContent()
