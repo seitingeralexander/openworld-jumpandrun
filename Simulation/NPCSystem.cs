@@ -100,7 +100,17 @@ namespace JumpAndRun.Simulation
 
         private bool HasCriticalNeeds(NPC npc)
         {
-            return npc.Needs.IsCritical(NeedType.Hunger) || npc.Needs.IsCritical(NeedType.Energy);
+            bool isCritical = npc.Needs.IsCritical(NeedType.Hunger) || npc.Needs.IsCritical(NeedType.Energy);
+
+            // Hysteresis for Energy/Sleeping:
+            // If the NPC is already sleeping, we consider the need critical until it is fully satisfied (>= 95).
+            // This prevents waking up immediately after crossing the 20 barrier.
+            if (npc.State == NPCState.Sleeping && !npc.Needs.IsSatisfied(NeedType.Energy))
+            {
+                return true;
+            }
+
+            return isCritical;
         }
 
         private void ResolveCriticalNeeds(NPC npc, float dt)
