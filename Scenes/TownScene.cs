@@ -172,16 +172,20 @@ namespace JumpAndRun.Scenes
             {
                 spriteBatch.Draw(_pixel, new Rectangle((int)npc.Position.X - 5, (int)npc.Position.Y - 5, 10, 10), Color.White);
                 
-                // Draw Needs Bar (Health-like)
+                // Draw Needs Bar (Health-like) - above the NPC
                 DrawBar(spriteBatch, new Vector2(npc.Position.X - 10, npc.Position.Y - 15), npc.Needs.GetValue(NeedType.Hunger) / 100f, Color.Red);
                 DrawBar(spriteBatch, new Vector2(npc.Position.X - 10, npc.Position.Y - 20), npc.Needs.GetValue(NeedType.Energy) / 100f, Color.Yellow);
 
-                if (true)
-                {
-                    string info = $"{npc.Name}\n{npc.State}";
-                    Vector2 infoSize = DebugFont.MeasureString(info);
-                    DebugFont.DrawString(spriteBatch, info, npc.Position - new Vector2(infoSize.X / 2, 50), Color.White);
-                }
+                // Get current schedule block
+                var currentBlock = npc.Schedule.GetBlockForHour(_context.Time.Hour);
+                string scheduleInfo = currentBlock != null 
+                    ? $"{currentBlock.Action} @ {currentBlock.TargetLocationId ?? "?"}" 
+                    : "No schedule";
+
+                // Draw info BELOW the NPC
+                string info = $"{npc.Name} | {npc.State}\n{scheduleInfo}";
+                Vector2 infoSize = DebugFont.MeasureString(info);
+                DebugFont.DrawString(spriteBatch, info, npc.Position + new Vector2(-infoSize.X / 2, 15), Color.White);
             }
 
             // Draw Player
