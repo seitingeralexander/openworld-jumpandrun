@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using JumpAndRun.Core;
 using JumpAndRun.Entities;
+using JumpAndRun.Simulation;
 using System.Collections.Generic;
 
 namespace JumpAndRun.Components
@@ -18,6 +19,14 @@ namespace JumpAndRun.Components
         
         public Camera Camera { get; set; }
         public List<GameObject> Platforms { get; set; } // Simplified collision check
+
+        private Player PlayerData => SimContext.Instance.Player;
+
+        public override void Start()
+        {
+            // Initialize position from persistent player data
+            Owner.Position = PlayerData.Position;
+        }
 
         public override void Update(GameTime gameTime)
         {
@@ -61,6 +70,9 @@ namespace JumpAndRun.Components
 
             // Camera
             Camera.Follow(Owner.Position);
+
+            // Sync position back to persistent player data
+            PlayerData.Position = Owner.Position;
         }
 
         private void HandleCollisions(bool horizontal)

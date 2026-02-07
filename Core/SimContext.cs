@@ -10,6 +10,7 @@ namespace JumpAndRun.Core
         private static SimContext _instance;
         public static SimContext Instance => _instance ??= new SimContext();
 
+        public Player Player { get; private set; }
         public NPCSystem NPCSystem { get; private set; }
         public TimeSystem Time { get; private set; }
         public Town Town { get; private set; }
@@ -17,6 +18,7 @@ namespace JumpAndRun.Core
 
         private SimContext()
         {
+            Player = new Player("Hero");
             Time = new TimeSystem();
             Town = new Town();
             NPCs = new List<NPC>();

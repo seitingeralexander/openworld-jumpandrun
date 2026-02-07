@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using JumpAndRun.Core;
+using JumpAndRun.Simulation;
 
 namespace JumpAndRun.Components
 {
@@ -8,6 +9,14 @@ namespace JumpAndRun.Components
     {
         public float Speed { get; set; } = 200f;
         public Camera Camera { get; set; } // Needed for mouse position conversion
+
+        private Player PlayerData => SimContext.Instance.Player;
+
+        public override void Start()
+        {
+            // Initialize position from persistent player data
+            Owner.Position = PlayerData.Position;
+        }
 
         public override void Update(GameTime gameTime)
         {
@@ -39,6 +48,10 @@ namespace JumpAndRun.Components
             }
             
             Camera.Follow(Owner.Position);
+
+            // Sync position back to persistent player data
+            PlayerData.Position = Owner.Position;
         }
     }
 }
+

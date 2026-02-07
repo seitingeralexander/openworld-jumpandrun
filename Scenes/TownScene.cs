@@ -47,18 +47,17 @@ namespace JumpAndRun.Scenes
             }
 
 
-            // Create Player Entity
+            // Create Player Entity (visual representation for this scene)
             Texture2D playerTex = new Texture2D(_graphicsDevice, 16, 16);
             Color[] playerData = new Color[16 * 16];
             for(int i=0; i<playerData.Length; i++) playerData[i] = Color.Green;
             playerTex.SetData(playerData);
 
             _player = new GameObject();
-            _player.Position = new Vector2(200, 200);
+            // Position is set by TopDownController.Start() from Context.Player.Position
             _player.AddComponent(new SpriteRenderer(playerTex));
             _player.AddComponent(new TopDownController() { Camera = _camera });
             _player.AddComponent(new BoxCollider(16, 16));
-            // World setup is now handled by WorldDataLoader at Game1 initialization
         }
 
 
