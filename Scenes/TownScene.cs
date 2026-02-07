@@ -15,19 +15,15 @@ namespace JumpAndRun.Scenes
     {
         private ContentManager _content;
         private GraphicsDevice _graphicsDevice;
-        private SimContext _context;
-        private NPCSystem _npcSystem;
-        // private SpriteFont _font; // Replaced by DebugFont
         private Texture2D _pixel;
         private GameObject _player;
         private Camera _camera;
 
-        public TownScene(GraphicsDevice graphicsDevice, ContentManager content)
+        public TownScene(GraphicsDevice graphicsDevice, ContentManager content, SimContext context)
+            : base(context)
         {
             _graphicsDevice = graphicsDevice;
             _content = content;
-            _context = new SimContext();
-            _npcSystem = new NPCSystem(_context);
             _camera = new Camera(_graphicsDevice.Viewport);
         }
 
@@ -62,54 +58,15 @@ namespace JumpAndRun.Scenes
             _player.AddComponent(new SpriteRenderer(playerTex));
             _player.AddComponent(new TopDownController() { Camera = _camera });
             _player.AddComponent(new BoxCollider(16, 16));
-            
-            // Setup Town
-            SetupWorld();
+            // World setup is now handled by WorldDataLoader at Game1 initialization
         }
 
-        private void SetupWorld()
-        {
-            // 1. Create Locations
-            var home = new Location("home_01", "Baker's Home", new Vector2(100, 100), LocationType.Home);
-            home.SetNeedRate(NeedType.Energy, 10f); // Sleeps restores 10/sec
 
-            var bakery = new Location("bakery_01", "Bakery", new Vector2(300, 100), LocationType.Work);
-            
-            var market = new Location("market_01", "Market", new Vector2(300, 300), LocationType.Service);
-            market.SetNeedRate(NeedType.Hunger, 20f); // Eating restores 20/sec
-            
-            var tavern = new Location("tavern_01", "Tavern", new Vector2(100, 300), LocationType.Leisure);
-            tavern.SetNeedRate(NeedType.Social, 15f);
-
-            _context.Town.AddLocation(home);
-            _context.Town.AddLocation(bakery);
-            _context.Town.AddLocation(market);
-            _context.Town.AddLocation(tavern);
-
-            // 2. Create NPC
-            var bg = new Background("Baker", "Hardworking", "home_01");
-            var npc = new NPC("Elena", bg);
-            npc.Position = home.Position; // Start at home
-
-            // 3. Define Schedule
-            npc.Schedule.AddBlock(new ScheduleBlock(6, 12, ScheduleAction.Work, "bakery_01"));
-            npc.Schedule.AddBlock(new ScheduleBlock(12, 13, ScheduleAction.Eat, "market_01"));
-            npc.Schedule.AddBlock(new ScheduleBlock(13, 18, ScheduleAction.Work, "bakery_01"));
-            npc.Schedule.AddBlock(new ScheduleBlock(18, 22, ScheduleAction.Socialize, "tavern_01"));
-            npc.Schedule.AddBlock(new ScheduleBlock(22, 6, ScheduleAction.Sleep, "home_01"));
-
-            _context.NPCs.Add(npc);
-        }
 
         public override void Update(GameTime gameTime)
         {
-            // Update Time
-            // Speed up time for testing: 1 real sec = 60 game mins (1 hour) -> 60x faster than default 0.1s/min
-            // Default: 0.1s = 1 min => 6s = 1 hour.
-            _context.Time.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
-
-            // Update Simulation
-            _npcSystem.Update(gameTime);
+            // Simulation (Time, NPCs) is now updated by Game1 via SimContext.Update()
+            // Scene only handles player input and camera
 
             // Update Player
             _player.Update(gameTime);
@@ -148,7 +105,7 @@ namespace JumpAndRun.Scenes
             spriteBatch.Begin(transformMatrix: _camera.Transform);
 
             // Draw Locations
-            foreach (var loc in _context.Town.Locations)
+            foreach (var loc in Context.Town.Locations)
             {
                 Color color = Color.Gray;
                 switch (loc.Type)
@@ -168,7 +125,7 @@ namespace JumpAndRun.Scenes
             }
 
             // Draw NPC
-            foreach (var npc in _context.NPCs)
+            foreach (var npc in Context.NPCs)
             {
                 spriteBatch.Draw(_pixel, new Rectangle((int)npc.Position.X - 5, (int)npc.Position.Y - 5, 10, 10), Color.White);
                 
@@ -177,7 +134,7 @@ namespace JumpAndRun.Scenes
                 DrawBar(spriteBatch, new Vector2(npc.Position.X - 10, npc.Position.Y - 20), npc.Needs.GetValue(NeedType.Energy) / 100f, Color.Yellow);
 
                 // Get current schedule block
-                var currentBlock = npc.Schedule.GetBlockForHour(_context.Time.Hour);
+                var currentBlock = npc.Schedule.GetBlockForHour(Context.Time.Hour);
                 string scheduleInfo = currentBlock != null 
                     ? $"{currentBlock.Action} @ {currentBlock.TargetLocationId ?? "?"}" 
                     : "No schedule";
@@ -201,7 +158,7 @@ namespace JumpAndRun.Scenes
 
             // Draw Time Info (Simple Representation if no font)
             // Draw a clock hand or progress bar for day?
-            int timeWidth = (int)((_context.Time.Hour * 60 + _context.Time.Minute) / (24f * 60f) * 800);
+            int timeWidth = (int)((Context.Time.Hour * 60 + Context.Time.Minute) / (24f * 60f) * 800);
             spriteBatch.Draw(_pixel, new Rectangle(0, 0, timeWidth, 10), Color.White);
 
             // Draw Zoom Level Indicator

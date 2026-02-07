@@ -19,6 +19,7 @@ namespace JumpAndRun.Scenes
         private Texture2D _houseTexture;
 
         public TopDownScene(GraphicsDevice graphicsDevice)
+            : base(SimContext.Instance)
         {
             _graphicsDevice = graphicsDevice;
             _objects = new List<GameObject>();

@@ -15,6 +15,7 @@ namespace JumpAndRun.Scenes
         private List<GameObject> _platforms;
         
         public SideScrollScene(GraphicsDevice graphicsDevice)
+            : base(SimContext.Instance)
         {
             _graphicsDevice = graphicsDevice;
             _platforms = new List<GameObject>();

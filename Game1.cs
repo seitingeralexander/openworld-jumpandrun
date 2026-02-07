@@ -26,11 +26,14 @@ public class Game1 : Game
     {
         base.Initialize();
         
+        // Setup world data (NPCs, Locations) once at game start
+        WorldDataLoader.Initialize(SimContext.Instance);
+        
         // Run verification tests logic (Headless check)
         JumpAndRun.Tests.TestRunner.RunTests();
 
-        // Load initial scene
-        SceneManager.Instance.LoadScene(new TownScene(GraphicsDevice, Content));
+        // Load initial scene with shared SimContext
+        SceneManager.Instance.LoadScene(new TownScene(GraphicsDevice, Content, SimContext.Instance));
     }
 
     protected override void LoadContent()
@@ -45,6 +48,10 @@ public class Game1 : Game
             Exit();
 
         InputManager.Instance.Update();
+        
+        // Update simulation (Time, NPCs) at game level - persists across scenes
+        SimContext.Instance.Update(gameTime);
+        
         SceneManager.Instance.Update(gameTime);
 
         base.Update(gameTime);

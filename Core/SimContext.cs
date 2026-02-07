@@ -1,19 +1,33 @@
 using JumpAndRun.World;
+using JumpAndRun.Simulation;
+using Microsoft.Xna.Framework;
 using System.Collections.Generic;
 
 namespace JumpAndRun.Core
 {
     public class SimContext
     {
+        private static SimContext _instance;
+        public static SimContext Instance => _instance ??= new SimContext();
+
+        public NPCSystem NPCSystem { get; private set; }
         public TimeSystem Time { get; private set; }
         public Town Town { get; private set; }
-        public List<JumpAndRun.Simulation.NPC> NPCs { get; private set; }
+        public List<NPC> NPCs { get; private set; }
 
-        public SimContext()
+        private SimContext()
         {
             Time = new TimeSystem();
             Town = new Town();
-            NPCs = new List<JumpAndRun.Simulation.NPC>();
+            NPCs = new List<NPC>();
+            NPCSystem = new NPCSystem(this);
+        }
+
+        public void Update(GameTime gameTime)
+        {
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            Time.Update(dt);
+            NPCSystem.Update(gameTime);
         }
     }
 }
