@@ -9,6 +9,11 @@ namespace JumpAndRun.Core
         public static SceneManager Instance => _instance ??= new SceneManager();
 
         private Scene _currentScene;
+        
+        /// <summary>
+        /// The SceneId of the currently active scene.
+        /// </summary>
+        public string ActiveSceneId { get; private set; }
 
         private SceneManager() { }
 
@@ -16,6 +21,7 @@ namespace JumpAndRun.Core
         {
             _currentScene?.UnloadContent();
             _currentScene = scene;
+            ActiveSceneId = scene.SceneId;
             _currentScene.LoadContent();
         }
 

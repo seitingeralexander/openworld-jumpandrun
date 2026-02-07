@@ -6,6 +6,12 @@ namespace JumpAndRun.Core
     public abstract class Scene
     {
         protected SimContext Context { get; private set; }
+        
+        /// <summary>
+        /// Unique identifier for this scene type (e.g., "TownScene", "SideScrollScene").
+        /// Used for NPC scene tracking and rendering filters.
+        /// </summary>
+        public abstract string SceneId { get; }
 
         protected Scene(SimContext context)
         {

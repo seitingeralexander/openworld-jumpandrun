@@ -8,11 +8,13 @@ using JumpAndRun.Simulation;
 using JumpAndRun.Entities;
 using JumpAndRun.Components;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace JumpAndRun.Scenes
 {
     public class TownScene : Scene
     {
+        public override string SceneId => "TownScene";
         private ContentManager _content;
         private GraphicsDevice _graphicsDevice;
         private Texture2D _pixel;
@@ -148,8 +150,8 @@ namespace JumpAndRun.Scenes
                 }
             }
 
-            // Draw NPC
-            foreach (var npc in Context.NPCs)
+            // Draw NPCs - only those in this scene
+            foreach (var npc in Context.NPCs.Where(n => n.CurrentSceneId == SceneId))
             {
                 spriteBatch.Draw(_pixel, new Rectangle((int)npc.Position.X - 5, (int)npc.Position.Y - 5, 10, 10), Color.White);
                 

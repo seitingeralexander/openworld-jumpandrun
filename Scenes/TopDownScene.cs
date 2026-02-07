@@ -9,6 +9,7 @@ namespace JumpAndRun.Scenes
 {
     public class TopDownScene : Scene
     {
+        public override string SceneId => "TopDownScene";
         private GameObject _player; // Generic GameObject now
         private Camera _camera;
         private GraphicsDevice _graphicsDevice;

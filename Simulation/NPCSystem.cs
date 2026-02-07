@@ -198,6 +198,30 @@ namespace JumpAndRun.Simulation
 
         private void MoveTo(NPC npc, Location location, float dt)
         {
+            // Handle cross-scene movement
+            if (location.SceneId != npc.CurrentSceneId)
+            {
+                // Save current position for this scene
+                npc.ScenePositions[npc.CurrentSceneId] = npc.Position;
+                
+                // Transition to new scene
+                npc.CurrentSceneId = location.SceneId;
+                
+                // Use saved position for target scene, or the location's entry position, or the location itself
+                if (npc.ScenePositions.TryGetValue(location.SceneId, out var savedPos))
+                {
+                    npc.Position = savedPos;
+                }
+                else if (location.EntryPosition != Vector2.Zero)
+                {
+                    npc.Position = location.EntryPosition;
+                }
+                else
+                {
+                    npc.Position = location.Position;
+                }
+            }
+
             float speed = 50f; // px/sec - slower than player (200)
 
             Vector2 dir = location.Position - npc.Position;

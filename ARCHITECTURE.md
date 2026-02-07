@@ -152,17 +152,42 @@ JumpAndRun/
 *   **Usage**: The `Game1` class forwards `Update` and `Draw` calls to the active `Scene`. 
 *   **SimContext**: Passed to scenes via base constructor. Scenes READ from SimContext, don't own it.
 *   **Persistence**: Player, NPCs, and world state persist across scene transitions.
+*   **Scene Identification**: Each scene has a unique `SceneId` property. `SceneManager.ActiveSceneId` tracks the current scene.
 
 ### 7. World Representation
 *   **Location**: `World/`
 *   **Concept**: Locations are logical entities that act as **Need Providers**.
+*   **Scene Ownership**: Each Location has a `SceneId` indicating which scene it belongs to.
 ```csharp
 class Location {
-    Dictionary<NeedType, float> NeedSatisfactionRates; // e.g., { Hunger: 20.0f }
+    string SceneId;  // e.g., "TownScene", "HouseInteriorScene"
+    Vector2 EntryPosition;  // Spawn point when entering via portal
+    Dictionary<NeedType, float> NeedSatisfactionRates;
 }
 class Town {
     Location GetBestLocationForNeed(NeedType need);
 }
+```
+
+### 8. Hybrid Scene + Portal Architecture
+*   **Core Principle**: NPCs are **always simulated** regardless of active scene. Scenes only **filter rendering**.
+*   **NPC Scene Tracking**: `NPC.CurrentSceneId` tracks which scene the NPC is visually in.
+*   **Position Preservation**: `NPC.ScenePositions` dictionary preserves position per-scene.
+*   **Cross-Scene Movement**: When `NPCSystem.MoveTo()` targets a location in a different scene, the NPC transitions:
+    1. Save current position to `ScenePositions`
+    2. Update `CurrentSceneId` to target scene
+    3. Load position from `ScenePositions` or use `Location.EntryPosition`
+
+```mermaid
+graph LR
+    subgraph Simulation [Always Running]
+        NPCSystem --> AllNPCs[All NPCs]
+    end
+    
+    subgraph Rendering [Scene-Filtered]
+        TownScene -.-> |CurrentSceneId == TownScene| VisibleNPCs
+        Interior -.-> |CurrentSceneId == Interior| VisibleNPCs
+    end
 ```
 
 ## Data Flow
@@ -179,6 +204,7 @@ class Town {
 ### Draw Loop
 *   `Game1` -> `SceneManager` -> `ActiveScene.Draw()`
 *   Scene reads `Context.Player`, `Context.NPCs`, and `Context.Town` to render
+*   **NPC Filtering**: `Context.NPCs.Where(n => n.CurrentSceneId == SceneId)`
 
 ### Scene Transition
 ```
@@ -196,5 +222,7 @@ class Town {
 | Equipment Effects | Stats modifiers from equipped items |
 | Save/Load | Serialize Player + SimContext to disk |
 | Different Sprites | TopDown vs SideScroll sprite sheets per scene |
+| Window Peeking | Draw simplified NPC sprites in building windows |
+| Interior NPCs | Render NPCs in building interiors when player enters |
 
 

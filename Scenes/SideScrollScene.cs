@@ -10,6 +10,7 @@ namespace JumpAndRun.Scenes
 {
     public class SideScrollScene : Scene
     {
+        public override string SceneId => "SideScrollScene";
         private GameObject _player;
         private Camera _camera;
         private GraphicsDevice _graphicsDevice;
