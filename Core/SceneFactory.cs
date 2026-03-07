@@ -33,6 +33,7 @@ namespace JumpAndRun.Core
                 "TownScene" => new TownScene(_graphicsDevice, _contentManager, SimContext.Instance),
                 "SideScrollScene" => new SideScrollScene(_graphicsDevice, _contentManager),
                 "BakerHouseInterior" => new BakerHouseInteriorScene(_graphicsDevice, _contentManager),
+                "MarcusHouseInterior" => new MarcusHouseInteriorScene(_graphicsDevice, _contentManager),
                 _ => throw new ArgumentException($"Unknown scene ID: {sceneId}")
             };
         }

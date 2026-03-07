@@ -16,6 +16,21 @@
       }
     },
     {
+      "id": "home_02",
+      "name": "Marcus's Home",
+      "position": {
+        "x": 0,
+        "y": 150
+      },
+      "type": "Home",
+      "capacity": 10,
+      "sceneId": "TownScene",
+      "targetSceneId": "MarcusHouseInterior",
+      "needRates": {
+        "Energy": 10.0
+      }
+    },
+    {
       "id": "bakery_01",
       "name": "Bakery",
       "position": {
@@ -83,6 +98,19 @@
       },
       "type": "Home",
       "sceneId": "BakerHouseInterior",
+      "needRates": {
+        "Energy": 15.0
+      }
+    },
+    {
+      "id": "marcus_home_interior",
+      "name": "Marcus's Bedroom",
+      "position": {
+        "x": 200,
+        "y": 350
+      },
+      "type": "Home",
+      "sceneId": "MarcusHouseInterior",
       "needRates": {
         "Energy": 15.0
       }
