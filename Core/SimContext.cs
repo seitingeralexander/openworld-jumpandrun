@@ -15,6 +15,7 @@ namespace JumpAndRun.Core
         public TimeSystem Time { get; private set; }
         public Town Town { get; private set; }
         public List<NPC> NPCs { get; private set; }
+        public List<EnvironmentProp> Props { get; private set; }
 
         private SimContext()
         {
@@ -22,6 +23,7 @@ namespace JumpAndRun.Core
             Time = new TimeSystem();
             Town = new Town();
             NPCs = new List<NPC>();
+            Props = new List<EnvironmentProp>();
             NPCSystem = new NPCSystem(this);
         }
 

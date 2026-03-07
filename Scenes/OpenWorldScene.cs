@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework.Input;
 using JumpAndRun.Core;
 using JumpAndRun.WorldGen;
 using JumpAndRun.Simulation;
+using JumpAndRun.World;
 
 namespace JumpAndRun.Scenes
 {
@@ -25,8 +26,11 @@ namespace JumpAndRun.Scenes
         private List<int> _indices = new();
         
         private List<VertexPositionColor> _borderVertices = new();
+        private List<VertexPositionColor> _roadVertices = new();
         private int _seed = 42;
         private IslandShapeType _currentShape = IslandShapeType.Radial;
+        
+        private Texture2D _pixel;
 
         public OpenWorldScene(GraphicsDevice graphicsDevice, ContentManager content, SimContext context)
             : base(context)
@@ -48,6 +52,9 @@ namespace JumpAndRun.Scenes
                 World = Matrix.Identity
             };
 
+            _pixel = new Texture2D(_graphicsDevice, 1, 1);
+            _pixel.SetData(new[] { Color.White });
+
             GenerateWorld();
         }
 
@@ -55,6 +62,9 @@ namespace JumpAndRun.Scenes
         {
             _mapGen = new MapGenerator(seed: _seed, variant: _seed, shape: _currentShape, numPoints: 1000, width: 2000, height: 2000);
             _mapGen.Generate();
+
+            var worldBuilder = new WorldBuilder(_seed);
+            worldBuilder.PopulateSimContext(Context, _mapGen);
 
             BuildRenderMesh();
 
@@ -67,6 +77,7 @@ namespace JumpAndRun.Scenes
             _vertices.Clear();
             _indices.Clear();
             _borderVertices.Clear();
+            _roadVertices.Clear();
 
             // Generate Triangles for each Voronoi polygon (Center)
             foreach (var center in _mapGen.Centers)
@@ -105,6 +116,17 @@ namespace JumpAndRun.Scenes
                     // Add border lines
                     _borderVertices.Add(new VertexPositionColor(new Vector3(current.Point, 0), Color.DarkGray * 0.5f));
                     _borderVertices.Add(new VertexPositionColor(new Vector3(next.Point, 0), Color.DarkGray * 0.5f));
+                }
+            }
+
+            // Generate Roads
+            Color roadColor = new Color(74, 55, 40); // Dark brown dirt road color
+            foreach (var edge in _mapGen.Edges)
+            {
+                if (edge.Road > 0)
+                {
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D0.Point, 0), roadColor));
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D1.Point, 0), roadColor));
                 }
             }
         }
@@ -206,6 +228,21 @@ namespace JumpAndRun.Scenes
                 }
             }
 
+            // Draw roads
+            if (_roadVertices.Count > 0)
+            {
+                foreach (var pass in _basicEffect.CurrentTechnique.Passes)
+                {
+                    pass.Apply();
+                    _graphicsDevice.DrawUserPrimitives(
+                        PrimitiveType.LineList,
+                        _roadVertices.ToArray(),
+                        0,
+                        _roadVertices.Count / 2
+                    );
+                }
+            }
+
             // Draw polygon borders
             if (_borderVertices.Count > 0)
             {
@@ -223,6 +260,32 @@ namespace JumpAndRun.Scenes
 
             // Draw rivers via lines (PrimitiveType.LineList)
             // ...
+
+            // Draw props (Vegetation/Rocks)
+            spriteBatch.Begin(transformMatrix: _camera.Transform);
+            foreach (var prop in Context.Props)
+            {
+                Color propColor = prop.Type switch
+                {
+                    PropType.Tree => Color.DarkGreen,
+                    PropType.PineTree => new Color(34, 139, 34), // Forest Green
+                    PropType.Bush => Color.LightGreen,
+                    PropType.Cactus => Color.OliveDrab,
+                    PropType.Rock => Color.DarkGray,
+                    _ => Color.Pink
+                };
+                
+                int size = (int)(4 * prop.Size);
+                spriteBatch.Draw(_pixel, new Rectangle((int)prop.Position.X - size/2, (int)prop.Position.Y - size/2, size, size), propColor);
+            }
+
+            // Draw locations
+            foreach (var loc in Context.Town.Locations)
+            {
+                spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X - 5, (int)loc.Position.Y - 5, 10, 10), Color.Red);
+                DebugFont.DrawString(spriteBatch, loc.Name, loc.Position + new Vector2(10, -10), Color.White);
+            }
+            spriteBatch.End();
 
             spriteBatch.Begin();
             string debugText = $"OpenWorld MapGen Visualizer - Seed: {_seed} | Shape: {_currentShape}\n" +

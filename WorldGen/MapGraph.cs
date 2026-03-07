@@ -49,5 +49,6 @@ namespace JumpAndRun.WorldGen
         public Corner V1 { get; set; }
         public Vector2 Midpoint { get; set; } // Halfway between v0, v1
         public int River { get; set; } // Volume of water, or 0
+        public int Road { get; set; } // 0 if no road, 1 or higher based on road type connecting centers
     }
 }
