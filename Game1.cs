@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using JumpAndRun.Core;
@@ -36,7 +36,7 @@ public class Game1 : Game
         JumpAndRun.Tests.TestRunner.RunTests();
 
         // Load initial scene with shared SimContext
-        SceneManager.Instance.LoadScene(new TownScene(GraphicsDevice, Content, SimContext.Instance));
+        SceneManager.Instance.LoadScene(new OpenWorldScene(GraphicsDevice, Content, SimContext.Instance));
     }
 
     protected override void LoadContent()

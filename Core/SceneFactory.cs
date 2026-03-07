@@ -31,6 +31,7 @@ namespace JumpAndRun.Core
             return sceneId switch
             {
                 "TownScene" => new TownScene(_graphicsDevice, _contentManager, SimContext.Instance),
+                "OpenWorldScene" => new OpenWorldScene(_graphicsDevice, _contentManager, SimContext.Instance),
                 "SideScrollScene" => new SideScrollScene(_graphicsDevice, _contentManager),
                 "BakerHouseInterior" => new BakerHouseInteriorScene(_graphicsDevice, _contentManager),
                 "MarcusHouseInterior" => new MarcusHouseInteriorScene(_graphicsDevice, _contentManager),
