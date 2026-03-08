@@ -22,59 +22,7 @@ namespace JumpAndRun.Core
 
         public static void Initialize(SimContext context)
         {
-            LoadLocationsFromJson(context);
             LoadNPCsFromJson(context);
-        }
-
-        // ============ Location Loading ============
-
-        private static void LoadLocationsFromJson(SimContext context)
-        {
-            var path = Path.Combine(DataPath, "locations.json");
-
-            if (!File.Exists(path))
-            {
-                throw new FileNotFoundException($"[WorldDataLoader] Required file not found: {path}");
-            }
-
-            var json = File.ReadAllText(path);
-            var data = JsonSerializer.Deserialize<WorldData>(json, JsonOptions);
-
-            if (data?.Locations == null || data.Locations.Count == 0)
-            {
-                throw new InvalidDataException($"[WorldDataLoader] No locations found in {path}");
-            }
-
-            foreach (var loc in data.Locations)
-            {
-                var position = new Vector2(loc.Position?.X ?? 0, loc.Position?.Y ?? 0);
-                var locationType = Enum.TryParse<LocationType>(loc.Type, out var type)
-                    ? type
-                    : LocationType.Service;
-
-                var location = new Location(loc.Id, loc.Name, position, locationType)
-                {
-                    Capacity = loc.Capacity,
-                    TargetSceneId = loc.TargetSceneId, // Portal target scene
-                    SceneId = loc.SceneId ?? "TownScene" // Default to TownScene for backwards compatibility
-                };
-
-                // Set need satisfaction rates
-                if (loc.NeedRates != null)
-                {
-                    foreach (var kvp in loc.NeedRates)
-                    {
-                        if (Enum.TryParse<NeedType>(kvp.Key, out var needType))
-                        {
-                            location.SetNeedRate(needType, kvp.Value);
-                        }
-                    }
-                }
-
-                context.Town.AddLocation(location);
-            }
-
-            Console.WriteLine($"[WorldDataLoader] Loaded {data.Locations.Count} locations from JSON");
         }
 
         // ============ NPC Loading ============

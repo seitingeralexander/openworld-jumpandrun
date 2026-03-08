@@ -9,21 +9,31 @@ using JumpAndRun.Entities;
 using JumpAndRun.Components;
 using System.Collections.Generic;
 using System.Linq;
+using JumpAndRun.WorldGen;
 
 namespace JumpAndRun.Scenes
 {
     public class TownScene : Scene
     {
-        public override string SceneId => "TownScene";
+        public override string SceneId { get; }
         private ContentManager _content;
         private GraphicsDevice _graphicsDevice;
         private Texture2D _pixel;
         private GameObject _player;
         private Camera _camera;
+        
+        // Rendering resources for Voronoi Town
+        private BasicEffect _basicEffect;
+        private List<VertexPositionColor> _vertices = new();
+        private List<int> _indices = new();
+        private List<VertexPositionColor> _borderVertices = new();
+        private List<VertexPositionColor> _wallVertices = new();
+        private List<VertexPositionColor> _roadVertices = new();
 
-        public TownScene(GraphicsDevice graphicsDevice, ContentManager content, SimContext context)
+        public TownScene(GraphicsDevice graphicsDevice, ContentManager content, SimContext context, string sceneId = "TownScene")
             : base(context)
         {
+            SceneId = sceneId;
             _graphicsDevice = graphicsDevice;
             _content = content;
             _camera = new Camera(_graphicsDevice.Viewport);
@@ -48,6 +58,28 @@ namespace JumpAndRun.Scenes
                 DebugFont.Initialize(_graphicsDevice);
             }
 
+            // Lazy Load Town Generation if locations don't exist for this specific SceneId
+            if (SceneId != "OpenWorldScene" && !Context.Town.Locations.Any(l => l.SceneId == SceneId))
+            {
+                // We need the global seed. For now we can extract it or pass it. 
+                // Let's use 42 as a fallback, or fetch it if we store it.
+                // Assuming SimContext or Game state handles seed, but we can just use 42 for now.
+                JumpAndRun.WorldGen.TownGenerator.GenerateTown(SceneId, 42, Context);
+            }
+
+            // Initialize BasicEffect for polygon rendering
+            _basicEffect = new BasicEffect(_graphicsDevice)
+            {
+                VertexColorEnabled = true,
+                World = Matrix.Identity,
+                View = Matrix.Identity,
+                Projection = Matrix.CreateOrthographicOffCenter(
+                    0, _graphicsDevice.Viewport.Width,
+                    _graphicsDevice.Viewport.Height, 0,
+                    0, 1) // Default UI/2D ortho, but changed dynamically in Draw
+            };
+
+            BuildTownMesh();
 
             // Create Player Entity (visual representation for this scene)
             Texture2D playerTex = new Texture2D(_graphicsDevice, 16, 16);
@@ -62,7 +94,93 @@ namespace JumpAndRun.Scenes
             _player.AddComponent(new BoxCollider(16, 16));
         }
 
+        private void BuildTownMesh()
+        {
+            if (!Context.Town.TownMaps.ContainsKey(SceneId)) return;
+            var mapGen = Context.Town.TownMaps[SceneId];
 
+            _vertices.Clear();
+            _indices.Clear();
+            _borderVertices.Clear();
+            _wallVertices.Clear();
+            _roadVertices.Clear();
+
+            // 1. Draw Polygons
+            foreach (var center in mapGen.Centers)
+            {
+                Color color = GetColorForDistrict(center.District);
+
+                var sortedCorners = center.Corners.OrderBy(c => System.Math.Atan2(c.Point.Y - center.Point.Y, c.Point.X - center.Point.X)).ToList();
+
+                if (sortedCorners.Count < 3) continue;
+
+                int startIndex = _vertices.Count;
+                _vertices.Add(new VertexPositionColor(new Vector3(center.Point, 0), color));
+
+                for (int i = 0; i < sortedCorners.Count; i++)
+                {
+                    var current = sortedCorners[i];
+                    var next = sortedCorners[(i + 1) % sortedCorners.Count];
+
+                    _vertices.Add(new VertexPositionColor(new Vector3(current.Point, 0), color));
+                    
+                    _indices.Add(startIndex);
+                    _indices.Add(_vertices.Count - 1);
+                    _indices.Add((i + 1 == sortedCorners.Count) ? startIndex + 1 : _vertices.Count);
+                    
+                    // Add border lines (light thin lines for all polygons)
+                    _borderVertices.Add(new VertexPositionColor(new Vector3(current.Point, 0), Color.DarkGray * 0.3f));
+                    _borderVertices.Add(new VertexPositionColor(new Vector3(next.Point, 0), Color.DarkGray * 0.3f));
+                }
+            }
+
+            // 2. Draw Walls and Roads
+            foreach (var edge in mapGen.Edges)
+            {
+                if (edge.IsWall)
+                {
+                    // Draw a thick/bright wall line
+                    _wallVertices.Add(new VertexPositionColor(new Vector3(edge.V0.Point, 0), Color.DarkSlateGray));
+                    _wallVertices.Add(new VertexPositionColor(new Vector3(edge.V1.Point, 0), Color.DarkSlateGray));
+                    
+                    // Add a slight offset to make it "thicker"
+                    _wallVertices.Add(new VertexPositionColor(new Vector3(edge.V0.Point.X + 2, edge.V0.Point.Y + 2, 0), Color.Gray));
+                    _wallVertices.Add(new VertexPositionColor(new Vector3(edge.V1.Point.X + 2, edge.V1.Point.Y + 2, 0), Color.Gray));
+                    
+                    _wallVertices.Add(new VertexPositionColor(new Vector3(edge.V0.Point.X - 2, edge.V0.Point.Y - 2, 0), Color.Gray));
+                    _wallVertices.Add(new VertexPositionColor(new Vector3(edge.V1.Point.X - 2, edge.V1.Point.Y - 2, 0), Color.Gray));
+                }
+                
+                if (edge.Road > 0)
+                {
+                    Color roadColor = new Color(139, 115, 85); // Light dirt/cobble color 
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D0.Point, 0), roadColor));
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D1.Point, 0), roadColor));
+                    
+                    // Thicken road
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D0.Point.X + 3, edge.D0.Point.Y + 3, 0), roadColor));
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D1.Point.X + 3, edge.D1.Point.Y + 3, 0), roadColor));
+                    
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D0.Point.X - 3, edge.D0.Point.Y - 3, 0), roadColor));
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D1.Point.X - 3, edge.D1.Point.Y - 3, 0), roadColor));
+                }
+            }
+        }
+
+        private Color GetColorForDistrict(DistrictType district)
+        {
+            return district switch
+            {
+                DistrictType.Market => new Color(200, 150, 100), // Sandy / Cobble
+                DistrictType.Noble => new Color(150, 200, 150), // Nice green lawns
+                DistrictType.Residential => new Color(120, 100, 80), // Dirt/wood
+                DistrictType.Slum => new Color(80, 70, 60), // Dark mud
+                DistrictType.Farm => new Color(180, 200, 80), // Bright green/yellow crops
+                DistrictType.Military => new Color(100, 100, 110), // Stone/Iron
+                DistrictType.Wilderness => new Color(50, 120, 50), // Forest green outside walls
+                _ => Color.Black
+            };
+        }
 
         public override void Update(GameTime gameTime)
         {
@@ -111,10 +229,17 @@ namespace JumpAndRun.Scenes
                 float distance = Vector2.Distance(_player.Position, loc.Position);
                 if (distance < 30f) // Portal trigger radius
                 {
-                    // Offset player position slightly away from portal to prevent re-entry on return
-                    Vector2 awayFromPortal = _player.Position - loc.Position;
-                    if (awayFromPortal != Vector2.Zero) awayFromPortal.Normalize();
-                    Context.Player.TownPosition = loc.Position + awayFromPortal * 50f;
+                    // When leaving a town, we need to ensure the player's world position is outside the OpenWorld's 300px entry radius.
+                    // Instead of a tiny offset, push them 400 pixels away from the town center in the Open World map.
+                    var townLoc = Context.Town.Locations.FirstOrDefault(l => l.Id == SceneId);
+                    if (townLoc != null)
+                    {
+                        Vector2 awayFromTown = _player.Position - new Vector2(1500, 1500); // Town map center
+                        if (awayFromTown != Vector2.Zero) awayFromTown.Normalize();
+                        else awayFromTown = new Vector2(0, 1);
+                        
+                        Context.Player.Position = townLoc.Position + awayFromTown * 400f; // 400px > 300px trigger radius
+                    }
                     
                     var scene = SceneFactory.Create(loc.TargetSceneId);
                     SceneManager.Instance.LoadScene(scene);
@@ -125,7 +250,55 @@ namespace JumpAndRun.Scenes
 
         public override void Draw(SpriteBatch spriteBatch)
         {
-            _graphicsDevice.Clear(Color.DarkOliveGreen);
+            _graphicsDevice.Clear(Color.Black);
+
+            // Update effect matrices for 2D Camera
+            _basicEffect.Projection = Matrix.CreateOrthographicOffCenter(
+                0, _graphicsDevice.Viewport.Width,
+                _graphicsDevice.Viewport.Height, 0,
+                0, 1);
+            _basicEffect.View = _camera.Transform;
+
+            _graphicsDevice.RasterizerState = RasterizerState.CullNone;
+
+            foreach (var pass in _basicEffect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+
+                // Draw filled polygons
+                if (_indices.Count > 0)
+                {
+                    _graphicsDevice.DrawUserIndexedPrimitives(
+                        PrimitiveType.TriangleList,
+                        _vertices.ToArray(), 0, _vertices.Count,
+                        _indices.ToArray(), 0, _indices.Count / 3);
+                }
+
+                // Draw district borders
+                if (_borderVertices.Count > 0)
+                {
+                    _graphicsDevice.DrawUserPrimitives(
+                        PrimitiveType.LineList,
+                        _borderVertices.ToArray(), 0, _borderVertices.Count / 2);
+                }
+
+                // Draw Town Walls ( thicker visually by drawing multiple lines or just bright color)
+                if (_wallVertices.Count > 0)
+                {
+                    // For thicker lines, we'd need a geometry shader or manual quads, but a line list is okay for now
+                    _graphicsDevice.DrawUserPrimitives(
+                        PrimitiveType.LineList,
+                        _wallVertices.ToArray(), 0, _wallVertices.Count / 2);
+                }
+
+                // Draw Roads
+                if (_roadVertices.Count > 0)
+                {
+                    _graphicsDevice.DrawUserPrimitives(
+                        PrimitiveType.LineList,
+                        _roadVertices.ToArray(), 0, _roadVertices.Count / 2);
+                }
+            }
 
             spriteBatch.Begin(transformMatrix: _camera.Transform);
 
@@ -141,12 +314,12 @@ namespace JumpAndRun.Scenes
                     case LocationType.Leisure: color = Color.Purple; break;
                     case LocationType.Portal: color = Color.Magenta; break;
                 }
-                spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X - 20, (int)loc.Position.Y - 20, 40, 40), color);
+                spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X - 35, (int)loc.Position.Y - 35, 70, 70), color);
                 
                 if (true) // DebugFont is always available
                 {
                     Vector2 textSize = DebugFont.MeasureString(loc.Name);
-                    DebugFont.DrawString(spriteBatch, loc.Name, loc.Position - new Vector2(textSize.X / 2, 40), Color.White);
+                    DebugFont.DrawString(spriteBatch, loc.Name, loc.Position - new Vector2(textSize.X / 2, 55), Color.White);
                 }
             }
 

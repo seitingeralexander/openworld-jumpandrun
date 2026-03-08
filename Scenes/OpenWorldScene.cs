@@ -8,6 +8,9 @@ using JumpAndRun.Core;
 using JumpAndRun.WorldGen;
 using JumpAndRun.Simulation;
 using JumpAndRun.World;
+using JumpAndRun.Entities;
+using JumpAndRun.Components;
+using System.Linq;
 
 namespace JumpAndRun.Scenes
 {
@@ -27,8 +30,10 @@ namespace JumpAndRun.Scenes
         
         private List<VertexPositionColor> _borderVertices = new();
         private List<VertexPositionColor> _roadVertices = new();
+        private GameObject _player;
         private int _seed = 42;
         private IslandShapeType _currentShape = IslandShapeType.Radial;
+        private float _portalCooldown = 0f; // Grace period on scene load to prevent instant re-entry
         
         private Texture2D _pixel;
 
@@ -54,13 +59,26 @@ namespace JumpAndRun.Scenes
 
             _pixel = new Texture2D(_graphicsDevice, 1, 1);
             _pixel.SetData(new[] { Color.White });
+            _basicEffect.VertexColorEnabled = true;
+
+            // Player Texture
+            Texture2D playerTex = new Texture2D(_graphicsDevice, 16, 16);
+            Color[] playerData = new Color[16 * 16];
+            for(int i=0; i<playerData.Length; i++) playerData[i] = Color.Blue;
+            playerTex.SetData(playerData);
+
+            _player = new GameObject();
+            _player.AddComponent(new SpriteRenderer(playerTex));
+            _player.AddComponent(new TopDownController() { Camera = _camera, Speed = 200f, UseTownPosition = false }); // Same speed as town
+            _player.AddComponent(new BoxCollider(16, 16));
 
             GenerateWorld();
+            _portalCooldown = 1.0f; // Give 1 second grace period before checking portals
         }
 
         private void GenerateWorld()
         {
-            _mapGen = new MapGenerator(seed: _seed, variant: _seed, shape: _currentShape, numPoints: 1000, width: 2000, height: 2000);
+            _mapGen = new MapGenerator(seed: _seed, variant: _seed, shape: _currentShape, numPoints: 5000, width: 10000, height: 10000);
             _mapGen.Generate();
 
             var worldBuilder = new WorldBuilder(_seed);
@@ -88,7 +106,7 @@ namespace JumpAndRun.Scenes
 
                 // Add Center vertex
                 int startIndex = _vertices.Count;
-                _vertices.Add(new VertexPositionColor(new Vector3(center.Point, 0), color));
+                _vertices.Add(new VertexPositionColor(new Vector3(center.Point * 10f, 0), color));
 
                 // Sort corners clockwise or counter-clockwise
                 var sortedCorners = new List<Corner>(center.Corners);
@@ -104,18 +122,19 @@ namespace JumpAndRun.Scenes
                     var current = sortedCorners[i];
                     var next = sortedCorners[(i + 1) % sortedCorners.Count];
 
-                    // Draw Rivers if any
-                    // Note: We'll draw them via a different method (Lines) or just bake them into colors
-
-                    _vertices.Add(new VertexPositionColor(new Vector3(current.Point, 0), color));
+                    _vertices.Add(new VertexPositionColor(new Vector3(current.Point * 10f, 0), color));
                     
                     _indices.Add(startIndex);
                     _indices.Add(_vertices.Count - 1);
                     _indices.Add((i + 1 == sortedCorners.Count) ? startIndex + 1 : _vertices.Count);
                     
-                    // Add border lines
-                    _borderVertices.Add(new VertexPositionColor(new Vector3(current.Point, 0), Color.DarkGray * 0.5f));
-                    _borderVertices.Add(new VertexPositionColor(new Vector3(next.Point, 0), Color.DarkGray * 0.5f));
+                    // Add border lines directly connecting the scaled corners
+                    Color borderColor = Color.Lerp(color, Color.Black, 0.2f);
+                    if (current.Water || current.Ocean) borderColor = color;
+                    else if (current.Coast) borderColor = Color.SandyBrown;
+                    
+                    _borderVertices.Add(new VertexPositionColor(new Vector3(current.Point * 10f, 0), borderColor));
+                    _borderVertices.Add(new VertexPositionColor(new Vector3(next.Point * 10f, 0), borderColor));
                 }
             }
 
@@ -125,8 +144,27 @@ namespace JumpAndRun.Scenes
             {
                 if (edge.Road > 0)
                 {
-                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D0.Point, 0), roadColor));
-                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D1.Point, 0), roadColor));
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D0.Point * 10f, 0), roadColor));
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D1.Point * 10f, 0), roadColor));
+
+                    // Thicken road visually due to larger scale
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D0.Point.X * 10f + 10, edge.D0.Point.Y * 10f + 10, 0), roadColor));
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D1.Point.X * 10f + 10, edge.D1.Point.Y * 10f + 10, 0), roadColor));
+
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D0.Point.X * 10f - 10, edge.D0.Point.Y * 10f - 10, 0), roadColor));
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D1.Point.X * 10f - 10, edge.D1.Point.Y * 10f - 10, 0), roadColor));
+                }
+            }
+
+            // Move player to the first generated Home location if this is their first time
+            if (!Context.Player.HasSpawnedInOpenWorld)
+            {
+                var homeLoc = Context.Town.Locations.FirstOrDefault(l => l.Type == LocationType.Home && l.SceneId == "OpenWorldScene");
+                if (homeLoc != null)
+                {
+                    _player.Position = homeLoc.Position;
+                    Context.Player.Position = homeLoc.Position;
+                    Context.Player.HasSpawnedInOpenWorld = true;
                 }
             }
         }
@@ -170,14 +208,8 @@ namespace JumpAndRun.Scenes
 
         public override void Update(GameTime gameTime)
         {
-            // Camera controls
+            // Camera zoom controls
             var kbd = InputManager.Instance;
-            float camSpeed = 500f * (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-            if (kbd.IsKeyDown(Keys.W)) _cameraPosition += new Vector2(0, -camSpeed);
-            if (kbd.IsKeyDown(Keys.S)) _cameraPosition += new Vector2(0, camSpeed);
-            if (kbd.IsKeyDown(Keys.A)) _cameraPosition += new Vector2(-camSpeed, 0);
-            if (kbd.IsKeyDown(Keys.D)) _cameraPosition += new Vector2(camSpeed, 0);
 
             if (kbd.IsKeyPressed(Keys.OemPlus) || kbd.IsKeyPressed(Keys.Add)) _camera.ZoomIn();
             if (kbd.IsKeyPressed(Keys.OemMinus) || kbd.IsKeyPressed(Keys.Subtract)) _camera.ZoomOut();
@@ -201,7 +233,67 @@ namespace JumpAndRun.Scenes
                 _camera.ZoomIn();
             else if (scrollDelta < 0)
                 _camera.ZoomOut();
-            _camera.Follow(_cameraPosition);
+                
+            Vector2 previousPos = _player.Position;
+
+            // Update Player (which handles WASD via TopDownController)
+            _player.Update(gameTime);
+            
+            // Check impassable terrain
+            if (_mapGen.Centers.Count > 0)
+            {
+                // Find closest center by scaling its point up to visual size
+                var nearestCenter = _mapGen.Centers.OrderBy(c => Vector2.DistanceSquared(c.Point * 10f, _player.Position)).First();
+                if (nearestCenter.Ocean || nearestCenter.Water || nearestCenter.Elevation > 0.8f) // 0.8 is Mountain/Snow
+                {
+                    _player.Position = previousPos; // Revert movement
+                    Context.Player.TownPosition = previousPos;
+                }
+            }
+
+            // Camera follows player
+            _cameraPosition = _player.Position;
+            // Removed _camera.Follow() here because TopDownController.Update() already calls Camera.Follow(Owner.Position)
+
+            // Tick down the portal cooldown (prevents immediate re-entry after returning from a town)
+            if (_portalCooldown > 0f)
+            {
+                _portalCooldown -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+                return; // Skip all collision checks while cooling down
+            }
+
+            // Check location collisions (Transitions to TownScene)
+            foreach (var loc in Context.Town.Locations)
+            {
+                if (loc.SceneId != "OpenWorldScene") continue;
+
+                // Use a larger collision radius (300 pixels) because towns are placed in the center of 3000x3000 polygons now
+                if (Vector2.DistanceSquared(_player.Position, loc.Position) < 90000f) // 300^2
+                {
+                    // Move the player back slightly to prevent a continuous transition loop upon return
+                    Vector2 awayFromLoc = _player.Position - loc.Position;
+                    if (awayFromLoc != Vector2.Zero) awayFromLoc.Normalize();
+                    Context.Player.Position = loc.Position + awayFromLoc * 500f;
+
+                    // Eagerly generate the town now so we can find the gate spawn position
+                    if (!Context.Town.Locations.Any(l => l.SceneId == loc.Id))
+                    {
+                        JumpAndRun.WorldGen.TownGenerator.GenerateTown(loc.Id, _seed, Context);
+                    }
+
+                    // Spawn the player near the first gate portal inside the town
+                    var gatePortal = Context.Town.Locations
+                        .FirstOrDefault(l => l.SceneId == loc.Id && l.IsPortal);
+                    Context.Player.TownPosition = gatePortal != null
+                        ? gatePortal.Position + new Vector2(50, 50) // Just inside the gate
+                        : new Vector2(1500, 1500); // Fallback: town center
+
+                    // Transition to the local 'zoomed in' scene
+                    var townScene = SceneFactory.Create(loc.Id);
+                    SceneManager.Instance.LoadScene(townScene);
+                    return; // Exit Update
+                }
+            }
         }
 
         public override void Draw(SpriteBatch spriteBatch)
@@ -275,18 +367,30 @@ namespace JumpAndRun.Scenes
                     _ => Color.Pink
                 };
                 
-                int size = (int)(4 * prop.Size);
+                // Increase prop size realistically to match new proportions
+                int size = (int)(40f * prop.Size);
                 spriteBatch.Draw(_pixel, new Rectangle((int)prop.Position.X - size/2, (int)prop.Position.Y - size/2, size, size), propColor);
             }
 
-            // Draw locations
-            foreach (var loc in Context.Town.Locations)
+            // Draw locations — box sized to match 300px collision radius (diameter = 600)
+            foreach (var loc in Context.Town.Locations.Where(l => l.SceneId == "OpenWorldScene"))
             {
-                spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X - 5, (int)loc.Position.Y - 5, 10, 10), Color.Red);
-                DebugFont.DrawString(spriteBatch, loc.Name, loc.Position + new Vector2(10, -10), Color.White);
+                int boxSize = 600;
+                spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X - boxSize/2, (int)loc.Position.Y - boxSize/2, boxSize, boxSize), Color.Red * 0.4f);
+                // Bright border: draw 4 thin edge lines by layering smaller rects
+                spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X - boxSize/2, (int)loc.Position.Y - boxSize/2, boxSize, 3), Color.Red);
+                spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X - boxSize/2, (int)loc.Position.Y + boxSize/2 - 3, boxSize, 3), Color.Red);
+                spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X - boxSize/2, (int)loc.Position.Y - boxSize/2, 3, boxSize), Color.Red);
+                spriteBatch.Draw(_pixel, new Rectangle((int)loc.Position.X + boxSize/2 - 3, (int)loc.Position.Y - boxSize/2, 3, boxSize), Color.Red);
+                DebugFont.DrawString(spriteBatch, loc.Name, loc.Position + new Vector2(-boxSize/2f + 5, -boxSize/2f - 15), Color.White);
             }
+
+            // Draw player
+            _player.Draw(spriteBatch);
+
             spriteBatch.End();
 
+            // UI Layer
             spriteBatch.Begin();
             string debugText = $"OpenWorld MapGen Visualizer - Seed: {_seed} | Shape: {_currentShape}\n" +
                                $"Vertices: {_vertices.Count} Indices: {_indices.Count} Zoom: {_camera.Zoom:F1}x\n" +

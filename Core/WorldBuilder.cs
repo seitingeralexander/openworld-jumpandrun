@@ -22,8 +22,8 @@ namespace JumpAndRun.Core
             Console.WriteLine("[WorldBuilder] Populating world from procedural map...");
 
             // Temporarily clear existing locations (e.g. from JSON) or we can mix them.
-            // Let's clear them so we just have the procedurally generated ones.
-            context.Town.Locations.Clear();
+            // Let's only clear procedurally generated ones so we don't break TownScene!
+            context.Town.Locations.RemoveAll(l => l.SceneId == "OpenWorldScene");
             context.Props.Clear();
 
             // Find candidates for towns / locations
@@ -53,7 +53,7 @@ namespace JumpAndRun.Core
             {
                 var center = candidates[i];
                 locationCenters.Add(center);
-                var pos = center.Point;
+                var pos = center.Point * 10f; // SCALE 10x to match Open World renderer
                 
                 var type = i switch
                 {
@@ -111,89 +111,8 @@ namespace JumpAndRun.Core
             {
                 var start = locationCenters[i];
                 var end = locationCenters[(i + 1) % locationCenters.Count];
-                BuildRoadAStar(mapGen, start, end);
+                mapGen.BuildRoadAStar(start, end);
             }
-        }
-
-        private void BuildRoadAStar(MapGenerator mapGen, Center start, Center end)
-        {
-            var openSet = new PriorityQueue<Center, float>();
-            var cameFrom = new Dictionary<Center, Center>();
-            var gScore = new Dictionary<Center, float>();
-            
-            // Initialization
-            foreach (var c in mapGen.Centers) gScore[c] = float.PositiveInfinity;
-            gScore[start] = 0;
-            openSet.Enqueue(start, Heuristic(start, end));
-
-            while (openSet.Count > 0)
-            {
-                var current = openSet.Dequeue();
-
-                if (current == end)
-                {
-                    ReconstructPath(cameFrom, current);
-                    return;
-                }
-
-                foreach (var neighbor in current.Neighbors)
-                {
-                    // Cost function: Base distance + extreme penalty for water + penalty for steep elevation
-                    float dist = Vector2.Distance(current.Point, neighbor.Point);
-                    float cost = dist;
-
-                    if (neighbor.Ocean) cost += 1000000f; // Impassable
-                    else if (neighbor.Water) cost += 10000f; // Bridges are expensive
-                    
-                    float elevDiff = Math.Abs(current.Elevation - neighbor.Elevation);
-                    cost += elevDiff * 5000f; // Avoid steep hills
-
-                    // Prefer reusing existing roads
-                    var edge = GetEdge(current, neighbor);
-                    if (edge != null && edge.Road > 0)
-                    {
-                        cost *= 0.1f; // 90% discount to use an existing road
-                    }
-
-                    float tentativeGScore = gScore[current] + cost;
-
-                    if (tentativeGScore < gScore[neighbor])
-                    {
-                        cameFrom[neighbor] = current;
-                        gScore[neighbor] = tentativeGScore;
-                        float fScore = tentativeGScore + Heuristic(neighbor, end);
-                        
-                        // PriorityQueue in .NET 6 doesn't have an EnqueueOrUpdate, so we just enqueue duplicates. 
-                        // The higher cost ones will be ignored if popped later because their tentativeGScore won't match, 
-                        // but actually we don't even need to check, since the first popped is the shortest.
-                        openSet.Enqueue(neighbor, fScore);
-                    }
-                }
-            }
-        }
-
-        private float Heuristic(Center a, Center b)
-        {
-            return Vector2.Distance(a.Point, b.Point);
-        }
-
-        private void ReconstructPath(Dictionary<Center, Center> cameFrom, Center current)
-        {
-            while (cameFrom.ContainsKey(current))
-            {
-                var prev = cameFrom[current];
-                var edge = GetEdge(prev, current);
-                if (edge != null)
-                {
-                    edge.Road = 1;
-                }
-                current = prev;
-            }
-        }
-
-        private Edge GetEdge(Center a, Center b)
-        {
-            return a.Borders.FirstOrDefault(e => (e.D0 == a && e.D1 == b) || (e.D1 == a && e.D0 == b));
         }
 
         private void GenerateEnvironmentProps(SimContext context, MapGenerator mapGen)
@@ -258,11 +177,11 @@ namespace JumpAndRun.Core
 
                 for (int i = 0; i < propsToSpawn; i++)
                 {
-                    // Random point roughly inside polygon (rejection sampling might be too slow, so just box clamp for effect)
-                    // A better way is interpolating between the center and a random corner
+                    // Random point roughly inside polygon
                     var corner = center.Corners[_random.Next(center.Corners.Count)];
                     float t = (float)_random.NextDouble();
-                    Vector2 pos = Vector2.Lerp(center.Point, corner.Point, t);
+                    Vector2 basePos = Vector2.Lerp(center.Point, corner.Point, t);
+                    Vector2 pos = basePos * 10f; // SCALE 10x to match Open World renderer
 
                     PropType type = availableProps[_random.Next(availableProps.Count)];
                     float size = (float)(_random.NextDouble() * 0.5 + 0.75); // 0.75x to 1.25x

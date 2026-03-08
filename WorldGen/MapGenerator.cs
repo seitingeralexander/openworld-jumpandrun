@@ -47,6 +47,12 @@ namespace JumpAndRun.WorldGen
         Blob
     }
 
+    public enum MapMode
+    {
+        World,
+        Town
+    }
+
     public class MapGenerator
     {
         public List<Center> Centers { get; private set; } = new();
@@ -59,13 +65,15 @@ namespace JumpAndRun.WorldGen
         private Rectangle _bounds;
         private Random _random;
         private IslandShapeType _islandShape;
+        private MapMode _mode;
 
-        public MapGenerator(int seed = 42, int variant = 0, IslandShapeType shape = IslandShapeType.Radial, int numPoints = 1000, int width = 1000, int height = 1000)
+        public MapGenerator(int seed = 42, int variant = 0, IslandShapeType shape = IslandShapeType.Radial, int numPoints = 1000, int width = 1000, int height = 1000, MapMode mode = MapMode.World)
         {
             _seed = seed;
             _variant = variant;
             _islandShape = shape;
             _numPoints = numPoints;
+            _mode = mode;
             _bounds = new Rectangle(0, 0, width, height);
             _random = new Random(_variant); // The map topology uses the variant seed
         }
@@ -84,18 +92,77 @@ namespace JumpAndRun.WorldGen
             RedistributeElevations();
             AssignPolygonElevations();
 
-            // 4. Calculate Downsopes
-            CalculateDownslopes();
+            if (_mode == MapMode.World)
+            {
+                // 4. Calculate Downsopes
+                CalculateDownslopes();
 
-            // 5. Generate Rivers
-            GenerateRivers(Math.Min(100, _numPoints / 10));
+                // 5. Generate Rivers
+                GenerateRivers(Math.Min(100, _numPoints / 10));
 
-            // 6. Assign Moisture
-            AssignMoisture();
-            RedistributeMoisture();
+                // 6. Assign Moisture
+                AssignMoisture();
+                RedistributeMoisture();
 
-            // 7. Assign Biomes
-            AssignBiomes();
+                // 7. Assign Biomes
+                AssignBiomes();
+            }
+            else
+            {
+                // Town Mode: Assign Districts
+                AssignTownDistricts();
+            }
+        }
+
+        private void AssignTownDistricts()
+        {
+            Vector2 mapCenter = new Vector2(_bounds.Width / 2f, _bounds.Height / 2f);
+            
+            // 1. Calculate max distance of any land to the center to normalize the distances
+            float maxLandDist = 1f; 
+            foreach (var center in Centers.Where(c => !c.Ocean && !c.Water))
+            {
+                float dist = Vector2.Distance(center.Point, mapCenter);
+                if (dist > maxLandDist) maxLandDist = dist;
+            }
+
+            // 2. Assign Districts
+            foreach (var center in Centers)
+            {
+                if (center.Ocean || center.Water)
+                {
+                    center.District = DistrictType.Wilderness;
+                    continue;
+                }
+
+                float normalizedDist = Vector2.Distance(center.Point, mapCenter) / maxLandDist;
+                
+                // Add some noise to the assignment
+                double noise = (_random.NextDouble() - 0.5) * 0.2;
+                float adjustedDist = MathHelper.Clamp(normalizedDist + (float)noise, 0f, 1f);
+
+                if (adjustedDist < 0.2f) center.District = DistrictType.Market;
+                else if (adjustedDist < 0.4f) center.District = DistrictType.Noble;
+                else if (adjustedDist < 0.7f) center.District = DistrictType.Residential;
+                else if (adjustedDist < 0.85f) center.District = DistrictType.Slum;
+                else center.District = DistrictType.Farm;
+            }
+
+            // 3. Assign Town Walls
+            foreach (var edge in Edges)
+            {
+                if (edge.D0 != null && edge.D1 != null)
+                {
+                    bool d0Wild = edge.D0.District == DistrictType.Wilderness;
+                    bool d1Wild = edge.D1.District == DistrictType.Wilderness;
+
+                    // Wall is on the edge between Wilderness and non-Wilderness
+                    if (d0Wild != d1Wild)
+                    {
+                        edge.IsWall = true;
+                    }
+                }
+            }
         }
 
         private List<MapVertex> GeneratePoints()
@@ -518,11 +585,144 @@ namespace JumpAndRun.WorldGen
                 else
                 {
                     if (center.Moisture > 0.66f) center.Biome = "TropicalRainForest";
-                    else if (center.Moisture > 0.33f) center.Biome = "TropicalSeasonalForest";
-                    else if (center.Moisture > 0.16f) center.Biome = "Grassland";
                     else center.Biome = "SubtropicalDesert";
                 }
             }
+        }
+
+        /// <summary>
+        /// Single-source Dijkstra from <paramref name="source"/>. When a node in <paramref name="targets"/> 
+        /// is settled, it traces back the path and marks those edges as roads. Much faster than 
+        /// running separate A* calls for each target.
+        /// </summary>
+        public void DijkstraMarkRoads(Center source, HashSet<Center> targets)
+        {
+            var dist = new Dictionary<Center, float> { [source] = 0f };
+            var prev = new Dictionary<Center, Center>();
+            var settled = new HashSet<Center>();
+            var pq = new PriorityQueue<Center, float>();
+            pq.Enqueue(source, 0f);
+
+            // How many targets remain so we can early-exit
+            int remaining = targets.Count;
+
+            while (pq.Count > 0 && remaining > 0)
+            {
+                var u = pq.Dequeue();
+                if (!settled.Add(u)) continue;
+
+                // If u is a target, trace back and mark its path
+                if (targets.Contains(u))
+                {
+                    var cur = u;
+                    while (prev.TryGetValue(cur, out var p))
+                    {
+                        var edge = GetEdge(cur, p);
+                        if (edge != null) edge.Road = 1;
+                        cur = p;
+                    }
+                    remaining--;
+                }
+
+                float uDist = dist.GetValueOrDefault(u, float.PositiveInfinity);
+                foreach (var v in u.Neighbors)
+                {
+                    if (settled.Contains(v)) continue;
+
+                    float edgeCost = Vector2.Distance(u.Point, v.Point);
+                    // In Town maps there's no ocean/water, so no massive penalties needed
+                    float tentative = uDist + edgeCost;
+
+                    if (tentative < dist.GetValueOrDefault(v, float.PositiveInfinity))
+                    {
+                        dist[v] = tentative;
+                        prev[v] = u;
+                        pq.Enqueue(v, tentative);
+                    }
+                }
+            }
+        }
+
+        public void BuildRoadAStar(Center start, Center end)
+        {
+            var openSet = new PriorityQueue<Center, float>();
+            var cameFrom = new Dictionary<Center, Center>();
+            // Lazy gScore: only allocate entries as we visit nodes (avoids O(n) init per call)
+            var gScore = new Dictionary<Center, float> { [start] = 0f };
+            // Closed set: skip nodes we already settled optimally
+            var closedSet = new HashSet<Center>();
+
+            openSet.Enqueue(start, Heuristic(start, end));
+
+            while (openSet.Count > 0)
+            {
+                var current = openSet.Dequeue();
+
+                if (current == end)
+                {
+                    ReconstructPath(cameFrom, current);
+                    return;
+                }
+
+                // Skip if already settled
+                if (!closedSet.Add(current)) continue;
+
+                foreach (var neighbor in current.Neighbors)
+                {
+                    if (closedSet.Contains(neighbor)) continue;
+
+                    // Cost function: base distance + terrain penalties
+                    float dist = Vector2.Distance(current.Point, neighbor.Point);
+                    float cost = dist;
+
+                    if (neighbor.Ocean) cost += 1000000f; // Impassable
+                    else if (neighbor.Water) cost += 10000f; // Expensive bridge
+
+                    // For towns (no elevation data), skip the elevation cost
+                    float elevDiff = Math.Abs(current.Elevation - neighbor.Elevation);
+                    cost += elevDiff * 500f; // Reduced penalty (towns are flat)
+
+                    // Prefer reusing existing roads
+                    var edge = GetEdge(current, neighbor);
+                    if (edge != null && edge.Road > 0)
+                        cost *= 0.1f; // 90% discount
+
+                    float currentG = gScore.GetValueOrDefault(current, float.PositiveInfinity);
+                    float tentativeG = currentG + cost;
+                    float neighborG = gScore.GetValueOrDefault(neighbor, float.PositiveInfinity);
+
+                    if (tentativeG < neighborG)
+                    {
+                        cameFrom[neighbor] = current;
+                        gScore[neighbor] = tentativeG;
+                        openSet.Enqueue(neighbor, tentativeG + Heuristic(neighbor, end));
+                    }
+                }
+            }
+        }
+
+        private float Heuristic(Center a, Center b)
+        {
+            return Vector2.Distance(a.Point, b.Point);
+        }
+
+        private void ReconstructPath(Dictionary<Center, Center> cameFrom, Center current)
+        {
+            while (cameFrom.ContainsKey(current))
+            {
+                var prev = cameFrom[current];
+                var edge = GetEdge(prev, current);
+                if (edge != null)
+                {
+                    edge.Road = 1;
+                }
+                current = prev;
+            }
+        }
+
+        private Edge GetEdge(Center a, Center b)
+        {
+            return a.Borders.FirstOrDefault(e => (e.D0 == a && e.D1 == b) || (e.D1 == a && e.D0 == b));
         }
 
         private bool Inside(Vector2 point)

@@ -1,15 +1,18 @@
 using System.Collections.Generic;
 using System.Linq;
+using JumpAndRun.WorldGen;
 
 namespace JumpAndRun.World
 {
     public class Town
     {
         public List<Location> Locations { get; private set; }
+        public Dictionary<string, MapGenerator> TownMaps { get; private set; }
 
         public Town()
         {
             Locations = new List<Location>();
+            TownMaps = new Dictionary<string, MapGenerator>();
         }
 
         public void AddLocation(Location location)

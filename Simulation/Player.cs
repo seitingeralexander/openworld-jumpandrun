@@ -10,6 +10,7 @@ namespace JumpAndRun.Simulation
     {
         public string Name { get; set; }
         public Vector2 Position { get; set; }
+        public bool HasSpawnedInOpenWorld { get; set; } = false;
         
         // Scene-specific positions (to preserve position when transitioning)
         public Vector2 TownPosition { get; set; }

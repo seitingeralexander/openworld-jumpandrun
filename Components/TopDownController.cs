@@ -9,13 +9,14 @@ namespace JumpAndRun.Components
     {
         public float Speed { get; set; } = 200f;
         public Camera Camera { get; set; } // Needed for mouse position conversion
+        public bool UseTownPosition { get; set; } = true;
 
         private Player PlayerData => SimContext.Instance.Player;
 
         public override void Start()
         {
-            // Initialize position from persistent player data (TownPosition for top-down scenes)
-            Owner.Position = PlayerData.TownPosition;
+            // Initialize position from persistent player data
+            Owner.Position = UseTownPosition ? PlayerData.TownPosition : PlayerData.Position;
         }
 
         public override void Update(GameTime gameTime)
@@ -49,9 +50,12 @@ namespace JumpAndRun.Components
             
             Camera.Follow(Owner.Position);
 
-            // Sync position back to persistent player data (TownPosition for top-down scenes)
-            PlayerData.TownPosition = Owner.Position;
-            PlayerData.Position = Owner.Position; // Also update general position for compatibility
+            // Sync position back to persistent player data
+            if (UseTownPosition) {
+                PlayerData.TownPosition = Owner.Position;
+            } else {
+                PlayerData.Position = Owner.Position;
+            }
         }
     }
 }

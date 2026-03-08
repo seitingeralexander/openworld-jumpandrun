@@ -3,6 +3,18 @@ using Microsoft.Xna.Framework;
 
 namespace JumpAndRun.WorldGen
 {
+    public enum DistrictType
+    {
+        None,
+        Market,
+        Residential,
+        Noble,
+        Slum,
+        Farm,
+        Military,
+        Wilderness // Outside the walls
+    }
+
     public class Center
     {
         public int Index { get; set; }
@@ -14,6 +26,7 @@ namespace JumpAndRun.WorldGen
         public string Biome { get; set; } // Biome type
         public float Elevation { get; set; } // 0.0-1.0
         public float Moisture { get; set; } // 0.0-1.0
+        public DistrictType District { get; set; } = DistrictType.None;
 
         public List<Center> Neighbors { get; set; } = new List<Center>();
         public List<Edge> Borders { get; set; } = new List<Edge>();
@@ -50,5 +63,6 @@ namespace JumpAndRun.WorldGen
         public Vector2 Midpoint { get; set; } // Halfway between v0, v1
         public int River { get; set; } // Volume of water, or 0
         public int Road { get; set; } // 0 if no road, 1 or higher based on road type connecting centers
+        public bool IsWall { get; set; } // True if this edge is a town wall
     }
 }

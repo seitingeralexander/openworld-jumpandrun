@@ -28,15 +28,14 @@ namespace JumpAndRun.Core
                 throw new InvalidOperationException("SceneFactory not initialized. Call Initialize() first.");
             }
 
-            return sceneId switch
+            switch (sceneId)
             {
-                "TownScene" => new TownScene(_graphicsDevice, _contentManager, SimContext.Instance),
-                "OpenWorldScene" => new OpenWorldScene(_graphicsDevice, _contentManager, SimContext.Instance),
-                "SideScrollScene" => new SideScrollScene(_graphicsDevice, _contentManager),
-                "BakerHouseInterior" => new BakerHouseInteriorScene(_graphicsDevice, _contentManager),
-                "MarcusHouseInterior" => new MarcusHouseInteriorScene(_graphicsDevice, _contentManager),
-                _ => throw new ArgumentException($"Unknown scene ID: {sceneId}")
-            };
+                case "OpenWorldScene": return new OpenWorldScene(_graphicsDevice, _contentManager, SimContext.Instance);
+                case "SideScrollScene": return new SideScrollScene(_graphicsDevice, _contentManager);
+                default: 
+                    // Any unmapped ID is assumed to be a dynamically generated town or specific interior missing a class
+                    return new TownScene(_graphicsDevice, _contentManager, SimContext.Instance, sceneId);
+            }
         }
     }
 }
