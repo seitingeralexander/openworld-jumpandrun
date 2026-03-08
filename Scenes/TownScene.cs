@@ -29,6 +29,7 @@ namespace JumpAndRun.Scenes
         private List<VertexPositionColor> _borderVertices = new();
         private List<VertexPositionColor> _wallVertices = new();
         private List<VertexPositionColor> _roadVertices = new();
+        private bool _showBorders = false; // Toggle with B key
 
         public TownScene(GraphicsDevice graphicsDevice, ContentManager content, SimContext context, string sceneId = "TownScene")
             : base(context)
@@ -151,35 +152,43 @@ namespace JumpAndRun.Scenes
                     _wallVertices.Add(new VertexPositionColor(new Vector3(edge.V1.Point.X - 2, edge.V1.Point.Y - 2, 0), Color.Gray));
                 }
                 
-                if (edge.Road > 0)
+                if (edge.Road > 0 && edge.V0 != null && edge.V1 != null)
                 {
-                    Color roadColor = new Color(139, 115, 85); // Light dirt/cobble color 
-                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D0.Point, 0), roadColor));
-                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D1.Point, 0), roadColor));
-                    
-                    // Thicken road
-                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D0.Point.X + 3, edge.D0.Point.Y + 3, 0), roadColor));
-                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D1.Point.X + 3, edge.D1.Point.Y + 3, 0), roadColor));
-                    
-                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D0.Point.X - 3, edge.D0.Point.Y - 3, 0), roadColor));
-                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.D1.Point.X - 3, edge.D1.Point.Y - 3, 0), roadColor));
+                    // Roads run along Voronoi edges (V0→V1) = polygon BOUNDARIES between lots.
+                    // This keeps houses at center.Point inside their lot and adjacent to the street.
+                    Color roadColor = new Color(139, 115, 85); // Light dirt/cobble color
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.V0.Point, 0), roadColor));
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.V1.Point, 0), roadColor));
+
+                    // Thicken road visually with parallel offset lines
+                    Vector2 dir = edge.V1.Point - edge.V0.Point;
+                    if (dir != Vector2.Zero) dir.Normalize();
+                    Vector2 perp = new Vector2(-dir.Y, dir.X) * 4f;
+
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.V0.Point + perp, 0), roadColor));
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.V1.Point + perp, 0), roadColor));
+
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.V0.Point - perp, 0), roadColor));
+                    _roadVertices.Add(new VertexPositionColor(new Vector3(edge.V1.Point - perp, 0), roadColor));
                 }
             }
         }
 
         private Color GetColorForDistrict(DistrictType district)
         {
-            return district switch
+            // Very subtle fills: districts are background context, roads and buildings stand out
+            Color c = district switch
             {
-                DistrictType.Market => new Color(200, 150, 100), // Sandy / Cobble
-                DistrictType.Noble => new Color(150, 200, 150), // Nice green lawns
-                DistrictType.Residential => new Color(120, 100, 80), // Dirt/wood
-                DistrictType.Slum => new Color(80, 70, 60), // Dark mud
-                DistrictType.Farm => new Color(180, 200, 80), // Bright green/yellow crops
-                DistrictType.Military => new Color(100, 100, 110), // Stone/Iron
-                DistrictType.Wilderness => new Color(50, 120, 50), // Forest green outside walls
-                _ => Color.Black
+                DistrictType.Market      => new Color(200, 150, 100),
+                DistrictType.Noble       => new Color(150, 200, 150),
+                DistrictType.Residential => new Color(120, 100,  80),
+                DistrictType.Slum        => new Color( 80,  70,  60),
+                DistrictType.Farm        => new Color(180, 200,  80),
+                DistrictType.Military    => new Color(100, 100, 110),
+                DistrictType.Wilderness  => new Color( 50, 120,  50),
+                _                        => Color.Black
             };
+            return c * 0.6f; // 15% opacity — visible hint of district, not dominant
         }
 
         public override void Update(GameTime gameTime)
@@ -207,6 +216,10 @@ namespace JumpAndRun.Scenes
             {
                 _camera.ResetZoom();
             }
+
+            // B = toggle polygon border overlay
+            if (InputManager.Instance.IsKeyPressed(Keys.B))
+                _showBorders = !_showBorders;
 
             // Mouse scroll wheel: scroll up (positive) = zoom in, scroll down (negative) = zoom out
             int scrollDelta = InputManager.Instance.GetScrollDelta();
@@ -274,8 +287,8 @@ namespace JumpAndRun.Scenes
                         _indices.ToArray(), 0, _indices.Count / 3);
                 }
 
-                // Draw district borders
-                if (_borderVertices.Count > 0)
+                // Draw district borders (toggleable with B key)
+                if (_showBorders && _borderVertices.Count > 0)
                 {
                     _graphicsDevice.DrawUserPrimitives(
                         PrimitiveType.LineList,

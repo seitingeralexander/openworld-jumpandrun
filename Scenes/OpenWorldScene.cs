@@ -34,6 +34,7 @@ namespace JumpAndRun.Scenes
         private int _seed = 42;
         private IslandShapeType _currentShape = IslandShapeType.Radial;
         private float _portalCooldown = 0f; // Grace period on scene load to prevent instant re-entry
+        private bool _showBorders = false; // Toggle with B key
         
         private Texture2D _pixel;
 
@@ -214,6 +215,7 @@ namespace JumpAndRun.Scenes
             if (kbd.IsKeyPressed(Keys.OemPlus) || kbd.IsKeyPressed(Keys.Add)) _camera.ZoomIn();
             if (kbd.IsKeyPressed(Keys.OemMinus) || kbd.IsKeyPressed(Keys.Subtract)) _camera.ZoomOut();
             if (kbd.IsKeyPressed(Keys.D0) || kbd.IsKeyPressed(Keys.NumPad0)) _camera.ResetZoom();
+            if (kbd.IsKeyPressed(Keys.B)) _showBorders = !_showBorders; // Toggle polygon borders
 
             if (kbd.IsKeyPressed(Keys.R))
             {
@@ -335,8 +337,8 @@ namespace JumpAndRun.Scenes
                 }
             }
 
-            // Draw polygon borders
-            if (_borderVertices.Count > 0)
+            // Draw polygon borders (toggleable with B)
+            if (_showBorders && _borderVertices.Count > 0)
             {
                 foreach (var pass in _basicEffect.CurrentTechnique.Passes)
                 {
